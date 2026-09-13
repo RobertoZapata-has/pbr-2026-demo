@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>PBR · Supervisión Central</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;background:#0f172a;color:white;overflow:hidden;}
+#app{display:flex;flex-direction:column;height:100vh;}
+#hdr{background:#1e293b;border-bottom:1px solid #334155;padding:9px 16px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;z-index:100;}
+.logo{display:flex;align-items:center;gap:10px;}
+.logo-name{font-size:15px;font-weight:900;letter-spacing:-.3px;line-height:1.1;}
+.logo-sub{font-size:9px;color:#2dd4bf;letter-spacing:2px;text-transform:uppercase;font-weight:700;}
+.hdr-r{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.pill{font-size:11px;font-weight:700;padding:4px 11px;border-radius:20px;}
+.pill-t{background:#ccfbf1;color:#0f766e;}
+.pill-r{background:#fee2e2;color:#dc2626;}
+.pill-s{background:#0f172a;border:1px solid #334155;color:#94a3b8;font-size:10px;}
+#clk{font-size:13px;font-weight:800;color:#2dd4bf;font-family:monospace;}
+#body{display:flex;flex:1;overflow:hidden;}
+#sidebar{width:310px;background:#1e293b;border-right:1px solid #334155;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden;}
+#stabs{display:flex;border-bottom:1px solid #334155;}
+.stab{flex:1;padding:10px 4px;background:none;border:none;border-bottom:2px solid transparent;color:#64748b;font-size:10.5px;font-weight:700;cursor:pointer;}
+.stab.on{color:#2dd4bf;border-bottom-color:#0d9488;}
+#sc{flex:1;overflow-y:auto;padding:12px;}
+#sc::-webkit-scrollbar{width:3px;}
+#sc::-webkit-scrollbar-thumb{background:#334155;border-radius:2px;}
+.bc{background:#0f172a;border:1px solid #334155;border-left:4px solid #334155;border-radius:12px;padding:11px 12px;margin-bottom:8px;transition:all .2s;}
+.bc.av{border-left-color:#22c55e;}
+.bc.ac{border-left-color:#0d9488;}
+.bc.sos{border-left-color:#ef4444;animation:sosB .7s ease-in-out infinite;}
+@keyframes sosB{0%,100%{background:#0f172a;}50%{background:#1c0a0a;}}
+.bc-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:5px;}
+.bc-id{font-weight:900;font-size:13px;cursor:pointer;}
+.bc-st{font-size:9px;font-weight:800;padding:2px 8px;border-radius:10px;text-transform:uppercase;}
+.st-av{background:#dcfce7;color:#16a34a;}
+.st-ac{background:#ccfbf1;color:#0f766e;}
+.st-sos{background:#fee2e2;color:#dc2626;}
+.bc-name{font-size:12px;color:#94a3b8;margin-bottom:4px;}
+.bc-timer{font-size:19px;font-weight:900;color:#2dd4bf;font-family:monospace;}
+.bc-timer.warn{color:#f59e0b;}.bc-timer.crit{color:#ef4444;}
+.bc-meta{font-size:10px;color:#475569;margin-top:3px;line-height:1.5;}
+.mini-btn{background:rgba(255,255,255,.07);border:1px solid #334155;color:#94a3b8;font-size:10px;font-weight:700;padding:4px 9px;border-radius:7px;cursor:pointer;margin-top:7px;}
+.mini-btn:hover{background:#334155;color:white;}
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.sb{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;text-align:center;}
+.sv{font-size:21px;font-weight:900;color:#2dd4bf;}
+.sl{font-size:9px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;}
+.alrt{background:#1c0a0a;border:1px solid #ef444440;border-radius:10px;padding:11px;margin-bottom:8px;}
+.alrt-id{font-weight:800;font-size:13px;color:#ef4444;}
+.alrt-t{font-size:10px;color:#64748b;margin-top:2px;}
+.alrt-c{font-size:11px;color:#94a3b8;font-family:monospace;margin-top:4px;}
+.alrt-btn{margin-top:8px;background:#ef4444;color:white;border:none;padding:5px 14px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;}
+.cli{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:10px;margin-bottom:7px;font-size:12px;}
+.cli-n{font-weight:800;color:#e2e8f0;}
+.cli-d{font-size:10.5px;color:#64748b;margin-top:3px;line-height:1.6;}
+.ctr{background:#0f172a;border:1px solid #334155;border-radius:10px;padding:11px;margin-bottom:8px;font-size:12px;}
+.ctr-code{font-weight:900;color:#2dd4bf;font-size:13px;font-family:monospace;}
+.ctr-n{font-weight:800;color:#e2e8f0;margin-top:2px;}
+.ctr-d{font-size:10.5px;color:#64748b;margin-top:4px;line-height:1.6;}
+.ctr-sig{background:white;border-radius:6px;margin-top:7px;padding:3px;}
+.ctr-sig img{width:100%;display:block;border-radius:4px;}
+.ctr-btn{width:100%;background:rgba(45,212,191,.12);border:1px solid #0d9488;color:#2dd4bf;font-size:11px;font-weight:800;padding:7px;border-radius:8px;cursor:pointer;margin-top:8px;}
+.ctr-btn:hover{background:#0d9488;color:white;}
+.badge-mk{display:inline-block;background:#064e3b;color:#6ee7b7;font-size:9px;font-weight:700;padding:2px 7px;border-radius:10px;margin-top:4px;}
+.exp-btn{width:100%;background:#0d9488;color:white;border:none;padding:11px;border-radius:10px;font-size:12px;font-weight:800;cursor:pointer;margin-bottom:10px;}
+.exp-btn:hover{background:#0f766e;}
+#mapc{flex:1;position:relative;}
+#map{position:absolute;inset:0;}
+.mp{position:absolute;z-index:500;background:rgba(15,23,42,.92);border:1px solid #334155;border-radius:10px;padding:8px 12px;font-size:12px;backdrop-filter:blur(8px);}
+#sos-ov{display:none;position:fixed;inset:0;z-index:9999;background:rgba(239,68,68,.18);backdrop-filter:blur(6px);align-items:center;justify-content:center;}
+#sos-box{background:#1e293b;border:2px solid #ef4444;border-radius:22px;padding:28px 24px;max-width:380px;width:92%;text-align:center;animation:sosP .6s ease-in-out infinite alternate;}
+@keyframes sosP{from{box-shadow:0 0 0 0 rgba(239,68,68,.3);}to{box-shadow:0 0 50px 12px rgba(239,68,68,.15);}}
+.sos-tit{font-size:22px;font-weight:900;color:#ef4444;margin-bottom:8px;}
+.sos-info{font-size:14px;color:#94a3b8;line-height:1.65;margin-bottom:14px;}
+.sos-coords{font-family:monospace;font-size:13px;color:#2dd4bf;background:#0f172a;padding:8px 14px;border-radius:10px;margin-bottom:18px;}
+.btn-ack{width:100%;background:#ef4444;color:white;border:none;padding:14px;border-radius:14px;font-size:15px;font-weight:900;cursor:pointer;margin-bottom:10px;}
+@media(max-width:768px){
+  #sidebar{position:fixed;bottom:0;left:0;width:100%;height:48%;border-right:none;border-top:1px solid #334155;z-index:400;}
+  #mapc{height:52%;}#body{flex-direction:column;}
+}
+</style>
+</head>
+<body>
+<div id="app">
+<header id="hdr">
+  <div class="logo">
+    <img src="pbr_logo.jpg" alt="PBR" style="width:42px;height:42px;border-radius:10px;object-fit:cover;border:2px solid #334155;" onerror="this.style.display='none'">
+    <div><div class="logo-name">POTRERILLOS BIKE RENTAL</div><div class="logo-sub">Central de Supervisión</div></div>
+  </div>
+  <div class="hdr-r">
+    <span id="b-ac" class="pill pill-t">0 activas</span>
+    <span id="b-sos" class="pill pill-r" style="display:none;">🆘 SOS</span>
+    <span id="b-mode" class="pill pill-s">Conectando...</span>
+    <span id="clk">--:--</span>
+  </div>
+</header>
+<div id="body">
+  <aside id="sidebar">
+    <div id="stabs">
+      <button class="stab on" onclick="tab('bikes')">🚲 Bicis</button>
+      <button class="stab" onclick="tab('alerts')">🆘 Alertas</button>
+      <button class="stab" onclick="tab('clients')">👥 Clientes</button>
+      <button class="stab" onclick="tab('contracts')">📄 Contratos</button>
+      <button class="stab" onclick="tab('stats')">📊 Stats</button>
+    </div>
+    <div id="sc">
+      <div id="t-bikes"><div id="bikes-list"></div></div>
+      <div id="t-alerts" style="display:none;"><div id="alerts-list"><p style="color:#475569;font-size:12px;text-align:center;padding:20px;">Sin alertas</p></div></div>
+      <div id="t-clients" style="display:none;">
+        <button class="exp-btn" onclick="exportarCSV()">⬇ Exportar base a CSV (Excel)</button>
+        <div style="font-size:10px;color:#475569;margin-bottom:10px;line-height:1.5;">Ley 25.326 — solo los clientes que dieron consentimiento explícito reciben promociones.</div>
+        <div id="clients-list" style="color:#475569;font-size:12px;text-align:center;padding:14px;">Sin clientes registrados</div>
+      </div>
+      <div id="t-contracts" style="display:none;">
+        <button class="exp-btn" onclick="descargarTodos()">⬇ Descargar todos los contratos (PDF)</button>
+        <div style="font-size:10px;color:#475569;margin-bottom:10px;line-height:1.5;">
+          Copia de cada contrato firmado, recibida automáticamente del celular del cliente. Se conserva en este dispositivo.
+        </div>
+        <div id="contracts-list" style="color:#475569;font-size:12px;text-align:center;padding:14px;">Sin contratos recibidos</div>
+      </div>
+      <div id="t-stats" style="display:none;">
+        <div class="sg">
+          <div class="sb"><div id="sv-ac" class="sv">0</div><div class="sl">En uso</div></div>
+          <div class="sb"><div id="sv-fr" class="sv">6</div><div class="sl">Libres</div></div>
+          <div class="sb"><div id="sv-rv" class="sv">$0</div><div class="sl">Ingresos</div></div>
+          <div class="sb"><div id="sv-to" class="sv">0</div><div class="sl">Alquileres</div></div>
+        </div>
+        <div class="sg">
+          <div class="sb"><div id="sv-mk" class="sv">0</div><div class="sl">Optaron promos</div></div>
+          <div class="sb"><div id="sv-oc" class="sv">0%</div><div class="sl">Ocupación</div></div>
+          <div class="sb"><div id="sv-ct" class="sv">0</div><div class="sl">Contratos</div></div>
+        </div>
+        <div style="background:#0f172a;border-radius:10px;padding:12px;border:1px solid #334155;">
+          <div style="font-size:10px;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;">Historial del día</div>
+          <div id="hist" style="color:#475569;font-size:12px;text-align:center;">Sin alquileres aún</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+  <div id="mapc">
+    <div id="map"></div>
+    <div class="mp" style="top:12px;right:12px;"><div style="font-size:10px;color:#64748b;">Zona operativa</div><div style="font-weight:700;">Potrerillos · RN7</div></div>
+    <div class="mp" style="top:68px;right:12px;"><div style="font-size:10px;color:#64748b;">GPS activos</div><div style="font-weight:700;" id="gps-cnt">0 bicis</div></div>
+  </div>
+</div>
+</div>
+
+<div id="sos-ov"><div id="sos-box">
+  <div style="font-size:48px;margin-bottom:8px;">🆘</div>
+  <div class="sos-tit">ALERTA SOS</div>
+  <div class="sos-info" id="sos-info">—</div>
+  <div class="sos-coords" id="sos-coords">—</div>
+  <button class="btn-ack" onclick="ackSOS()">✅ Entendido — Enviando asistencia</button>
+  <a id="sos-link" href="#" target="_blank" style="font-size:12px;color:#2dd4bf;">📍 Ver en Google Maps</a>
+</div></div>
+
+<script>
+var BASE={lat:-32.9565,lng:-69.1978}, NB=6;
+var TOPIC="pbr/potrerillos/grp-zapata-romero-terraza/2026/v1";
+var MY_ID="sup-"+Math.random().toString(16).slice(2,8);
+
+var ST={}, alerts=[], clientes=[], contratos=[], rev=0, tot=0, sosBike=null;
+var CKEY="pbr-contratos-central";
+try{ var _c=localStorage.getItem(CKEY); if(_c) contratos=JSON.parse(_c)||[]; }catch(e){ contratos=[]; }
+var map_, mkrs={}, mqttClient=null;
+
+for(var i=1;i<=NB;i++){
+  var id=String(i).padStart(2,"0");
+  ST[id]={id:id,status:"available",renter:null,remain:0,lat:null,lng:null,code:null,price:0,upd:null};
+}
+
+// ═══ MQTT ═══
+function initMQTT(){
+  mqttClient=mqtt.connect("wss://broker.hivemq.com:8884/mqtt",{
+    clientId:MY_ID,clean:true,connectTimeout:5000,reconnectPeriod:3000});
+  mqttClient.on("connect",function(){
+    mqttClient.subscribe(TOPIC);
+    setMode("🟢 EN VIVO","#22c55e");
+    broadcastState();
+  });
+  mqttClient.on("message",function(t,msg){
+    try{ var m=JSON.parse(msg.toString()); if(m.sender===MY_ID) return; handle(m.type,m.data); }catch(e){}
+  });
+  mqttClient.on("error",    function(){ setMode("🔴 Sin conexión","#ef4444"); });
+  mqttClient.on("reconnect",function(){ setMode("🟡 Reconectando","#f59e0b"); });
+}
+function enviar(type,data){
+  if(!mqttClient||!mqttClient.connected) return;
+  mqttClient.publish(TOPIC,JSON.stringify({type:type,data:data,sender:MY_ID,ts:Date.now()}));
+}
+function setMode(t,c){ var e=document.getElementById("b-mode"); if(e){e.textContent=t;e.style.color=c;e.style.borderColor=c;} }
+
+// Transmitir estado completo (arregla el bug del cliente que llega tarde)
+function broadcastState(){
+  var snap={};
+  Object.keys(ST).forEach(function(id){ snap[id]={status:ST[id].status,renter:ST[id].renter}; });
+  enviar("STATE_SYNC",{bikes:snap});
+}
+setInterval(broadcastState,8000);
+
+// ═══ EVENTOS ═══
+function handle(type,data){
+  if(type==="REQUEST_STATE"){ broadcastState(); return; }
+  if(type==="CONTRACT"){ onContract(data); return; }
+  var id=data&&data.id; if(!id) return;
+  if(type==="RENTAL_START")      onStart(data);
+  else if(type==="GPS")          onGPS(data);
+  else if(type==="SOS")          onSOS(data);
+  else if(type==="END")          onEnd(data);
+}
+
+function onStart(d){
+  var id=d.id; if(!ST[id]) return;
+  ST[id].status="active"; ST[id].renter=d.renter; ST[id].remain=(d.hours||0)*3600;
+  ST[id].lat=d.lat; ST[id].lng=d.lng; ST[id].code=d.code; ST[id].price=d.price||0; ST[id].upd=Date.now();
+  rev+=(d.price||0); tot++;
+  clientes.push({
+    nombre:d.renter||"", dni:d.dni||"", tel:d.tel||"", mail:d.mail||"",
+    marketing:!!d.marketing, bici:id, code:d.code||"", precio:d.price||0,
+    plan:d.type||"", fecha:new Date().toLocaleString("es-AR")
+  });
+  addHist(d.code,d.renter,id,d.price||0);
+  refreshCard(id); updMkr(id); refreshHdr(); renderClientes(); broadcastState();
+}
+function onGPS(d){
+  var b=ST[d.id]; if(!b||b.status==="available") return;
+  b.lat=d.lat; b.lng=d.lng; if(typeof d.remain==="number") b.remain=d.remain; b.upd=Date.now();
+  updMkr(d.id);
+}
+function onSOS(d){
+  var id=d.id; if(!ST[id]) return;
+  ST[id].status="sos"; ST[id].lat=d.lat; ST[id].lng=d.lng; ST[id].upd=Date.now();
+  alerts.unshift({id:"a"+Date.now(),bikeId:id,renter:d.renter,tel:d.tel||"",lat:d.lat,lng:d.lng,ts:Date.now(),ack:false});
+  refreshCard(id); updMkr(id); refreshHdr(); renderAlerts();
+  mostrarSOS(d); sonarAlarma();
+}
+function onEnd(d){
+  var id=d.id; if(!ST[id]) return;
+  ST[id].status="available"; ST[id].renter=null; ST[id].remain=0;
+  ST[id].lat=null; ST[id].lng=null; ST[id].code=null; ST[id].upd=null;
+  refreshCard(id); rmMkr(id); refreshHdr(); broadcastState();
+}
+
+// Liberar bici manualmente desde la central
+function liberarBici(id){
+  if(!confirm("¿Liberar la bicicleta #"+id+"? Se va a finalizar el alquiler de "+(ST[id].renter||"el cliente")+".")) return;
+  enviar("FORCE_RELEASE",{id:id});
+  onEnd({id:id});
+}
+
+// ═══ MAPA ═══
+function initMap(){
+  map_=L.map("map",{zoomControl:true}).setView([BASE.lat,BASE.lng],14);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{attribution:"© OSM",maxZoom:19}).addTo(map_);
+  L.circle([BASE.lat,BASE.lng],{radius:2200,color:"#0d9488",fillColor:"#0d9488",fillOpacity:.06,weight:1,dashArray:"8"}).addTo(map_);
+  L.marker([BASE.lat,BASE.lng],{icon:L.divIcon({
+    html:"<div style='background:#1e293b;border:2px solid #0d9488;border-radius:8px;padding:4px 10px;color:#2dd4bf;font-size:11px;font-weight:800;white-space:nowrap;'>📍 BASE</div>",
+    iconAnchor:[28,12],className:""})}).addTo(map_).bindPopup("<b>Base Potrerillos Bike Rental</b><br>Embalse Potrerillos · RN7");
+}
+function icono(b){
+  var c=b.status==="sos"?"#ef4444":b.status==="active"?"#0d9488":"#22c55e";
+  var bg=b.status==="sos"?"#fee2e2":b.status==="active"?"#f0fdfa":"#dcfce7";
+  var e=b.status==="sos"?"🆘":b.status==="active"?"🚴":"🚲";
+  return L.divIcon({html:"<div style='background:"+bg+";border:2px solid "+c+";border-radius:10px;padding:4px 10px;font-size:12px;font-weight:900;color:"+c+";white-space:nowrap;box-shadow:0 2px 10px "+c+"60;'>"+e+" #"+b.id+"</div>",iconAnchor:[30,12],className:""});
+}
+function updMkr(id){
+  var b=ST[id]; if(!b.lat||!b.lng){ rmMkr(id); return; }
+  if(mkrs[id]) mkrs[id].setLatLng([b.lat,b.lng]).setIcon(icono(b));
+  else mkrs[id]=L.marker([b.lat,b.lng],{icon:icono(b)}).addTo(map_);
+  mkrs[id].bindPopup("<b>Bici #"+id+"</b><br>👤 "+(b.renter||"—")+"<br>⏱ "+fmt(b.remain)+"<br><small style='font-family:monospace'>"+b.lat.toFixed(5)+", "+b.lng.toFixed(5)+"</small>");
+  contarGPS();
+}
+function rmMkr(id){ if(mkrs[id]){ mkrs[id].remove(); delete mkrs[id]; } contarGPS(); }
+function contarGPS(){
+  var n=0; Object.keys(ST).forEach(function(k){ if(ST[k].lat) n++; });
+  var e=document.getElementById("gps-cnt"); if(e) e.textContent=n+" bici"+(n!==1?"s":"");
+}
+
+// ═══ TARJETAS ═══
+function buildCards(){
+  var c=document.getElementById("bikes-list"); c.innerHTML="";
+  Object.keys(ST).forEach(function(id){
+    var d=document.createElement("div"); d.id="bc-"+id; c.appendChild(d); refreshCard(id,d);
+  });
+}
+function refreshCard(id,el){
+  var b=ST[id], card=el||document.getElementById("bc-"+id); if(!card) return;
+  var lbl={available:"Disponible",active:"En uso",sos:"🆘 SOS"}[b.status];
+  var cls={available:"st-av",active:"st-ac",sos:"st-sos"}[b.status];
+  var cc ={available:"av",active:"ac",sos:"sos"}[b.status];
+  var tc = b.remain<600?"bc-timer crit":b.remain<1800?"bc-timer warn":"bc-timer";
+  card.className="bc "+cc;
+  var html="<div class='bc-top'><span class='bc-id' onclick=\"irA('"+id+"')\">🚲 Unidad #"+id+"</span>"+
+           "<span class='bc-st "+cls+"'>"+lbl+"</span></div>"+
+           "<div class='bc-name'>"+(b.renter?"👤 "+b.renter:"<span style='color:#334155'>— libre —</span>")+"</div>";
+  if(b.status!=="available") html+="<div class='"+tc+"' id='t-"+id+"'>"+fmt(b.remain)+"</div>";
+  html+="<div class='bc-meta'>";
+  if(b.code)  html+=b.code+" · $"+b.price.toLocaleString("es-AR")+"<br>";
+  if(b.lat)   html+="📍 "+b.lat.toFixed(4)+", "+b.lng.toFixed(4)+"<br>";
+  if(b.upd)   html+="Actualiz: "+hace(b.upd);
+  html+="</div>";
+  if(b.status!=="available") html+="<button class='mini-btn' onclick=\"liberarBici('"+id+"')\">🔓 Liberar bici</button>";
+  card.innerHTML=html;
+}
+function irA(id){ var b=ST[id]; if(b.lat&&b.lng&&map_) map_.flyTo([b.lat,b.lng],16); }
+
+setInterval(function(){
+  Object.keys(ST).forEach(function(id){
+    var b=ST[id];
+    if(b.status==="active"&&b.remain>0){
+      b.remain--;
+      var el=document.getElementById("t-"+id);
+      if(el){ el.textContent=fmt(b.remain); el.className=b.remain<600?"bc-timer crit":b.remain<1800?"bc-timer warn":"bc-timer"; }
+      if(b.remain<=0){ onEnd({id:id}); }
+    }
+  });
+},1000);
+setInterval(function(){ Object.keys(ST).forEach(function(id){ refreshCard(id); }); },10000);
+
+// ═══ SOS ═══
+function mostrarSOS(d){
+  sosBike=d.id;
+  document.getElementById("sos-info").innerHTML="<b>Bicicleta #"+d.id+"</b> · "+d.renter+
+    (d.tel?"<br>📞 "+d.tel:"")+"<br>Solicita asistencia inmediata";
+  document.getElementById("sos-coords").textContent="Lat: "+d.lat.toFixed(5)+"  ·  Lng: "+d.lng.toFixed(5);
+  document.getElementById("sos-link").href="https://maps.google.com/maps?q="+d.lat+","+d.lng;
+  document.getElementById("sos-ov").style.display="flex";
+  if(map_) map_.flyTo([d.lat,d.lng],16);
+}
+function ackSOS(){
+  document.getElementById("sos-ov").style.display="none";
+  if(sosBike&&ST[sosBike]&&ST[sosBike].status==="sos"){ ST[sosBike].status="active"; refreshCard(sosBike); updMkr(sosBike); }
+  alerts.forEach(function(a){ if(a.bikeId===sosBike) a.ack=true; });
+  renderAlerts(); refreshHdr();
+}
+function renderAlerts(){
+  var c=document.getElementById("alerts-list");
+  if(!alerts.length){ c.innerHTML="<p style='color:#475569;font-size:12px;text-align:center;padding:20px;'>Sin alertas</p>"; return; }
+  c.innerHTML="";
+  alerts.forEach(function(a){
+    var d=document.createElement("div");
+    d.className="alrt"; if(a.ack) d.style.opacity=".5";
+    d.innerHTML="<div class='alrt-id'>🆘 Bici #"+a.bikeId+" — "+a.renter+"</div>"+
+      "<div class='alrt-t'>"+new Date(a.ts).toLocaleTimeString("es-AR")+(a.ack?" · Atendida":"")+(a.tel?" · 📞 "+a.tel:"")+"</div>"+
+      "<div class='alrt-c'>"+a.lat.toFixed(5)+", "+a.lng.toFixed(5)+"</div>";
+    if(!a.ack){
+      var b=document.createElement("button");
+      b.className="alrt-btn"; b.textContent="✅ Atender";
+      b.onclick=function(){ a.ack=true; if(ST[a.bikeId]&&ST[a.bikeId].status==="sos"){ST[a.bikeId].status="active";refreshCard(a.bikeId);updMkr(a.bikeId);} renderAlerts(); refreshHdr(); };
+      d.appendChild(b);
+    }
+    c.appendChild(d);
+  });
+}
+function sonarAlarma(){
+  try{
+    var ctx=new(window.AudioContext||window.webkitAudioContext)();
+    [[0,.18],[.25,.18],[.5,.18],[.85,.45],[1.45,.45],[2.05,.45],[2.65,.18],[2.9,.18],[3.15,.18]].forEach(function(p){
+      var o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination); o.frequency.value=880;
+      g.gain.setValueAtTime(0,ctx.currentTime+p[0]);
+      g.gain.linearRampToValueAtTime(.7,ctx.currentTime+p[0]+.02);
+      g.gain.setValueAtTime(.7,ctx.currentTime+p[0]+p[1]-.02);
+      g.gain.linearRampToValueAtTime(0,ctx.currentTime+p[0]+p[1]);
+      o.start(ctx.currentTime+p[0]); o.stop(ctx.currentTime+p[0]+p[1]);
+    });
+  }catch(e){}
+}
+
+
+// ═══ CONTRATOS ═══
+function onContract(d){
+  if(!d || !d.code) return;
+  if(contratos.some(function(c){ return c.code===d.code; })) return; // evitar duplicados
+  contratos.push(d);
+  guardarContratos();
+  renderContratos();
+  var t=document.querySelectorAll(".stab")[4];
+  if(t && !t.classList.contains("on")) t.style.color="#2dd4bf";
+}
+function guardarContratos(){
+  try{ localStorage.setItem(CKEY, JSON.stringify(contratos)); }
+  catch(e){ /* si se llena el storage, se descartan los más viejos */
+    try{ contratos=contratos.slice(-40); localStorage.setItem(CKEY, JSON.stringify(contratos)); }catch(e2){}
+  }
+}
+function renderContratos(){
+  var c=document.getElementById("contracts-list");
+  if(!contratos.length){ c.innerHTML="Sin contratos recibidos"; c.style.textAlign="center"; return; }
+  c.style.textAlign="left"; c.innerHTML="";
+  contratos.slice().reverse().forEach(function(ct,i){
+    var idx = contratos.length-1-i;
+    var d=document.createElement("div"); d.className="ctr";
+    var html="<div class='ctr-code'>"+ct.code+"</div>"+
+             "<div class='ctr-n'>"+ct.nombre+"</div>"+
+             "<div class='ctr-d'>DNI "+ct.dni+" · 📞 "+ct.tel+(ct.mail?"<br>✉ "+ct.mail:"")+
+             "<br>Bici #"+ct.id+" · "+ct.plan+" ("+ct.duracion+") · $"+(ct.precio||0).toLocaleString("es-AR")+
+             "<br>"+ct.fecha+"<br>📍 "+ct.gps+"</div>";
+    if(ct.firma) html+="<div class='ctr-sig'><img src='"+ct.firma+"' alt='firma'></div>";
+    if(ct.marketing) html+="<span class='badge-mk'>✓ Acepta promociones</span>";
+    d.innerHTML=html;
+    var b=document.createElement("button");
+    b.className="ctr-btn"; b.textContent="📄 Descargar PDF";
+    b.onclick=function(){ pdfContrato(idx); };
+    d.appendChild(b);
+    c.appendChild(d);
+  });
+}
+
+function pdfContrato(i){
+  var d=contratos[i]; if(!d) return;
+  try{
+    var doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
+    var y=18;
+    doc.setFontSize(16); doc.setFont(undefined,"bold");
+    doc.text("POTRERILLOS BIKE RENTAL",105,y,{align:"center"}); y+=6;
+    doc.setFontSize(10); doc.setFont(undefined,"normal");
+    doc.text("Contrato de Alquiler de Bicicleta - "+d.code,105,y,{align:"center"}); y+=4;
+    doc.setFontSize(8); doc.setTextColor(120);
+    doc.text("Embalse Potrerillos - Lujan de Cuyo - Mendoza - COPIA DEL LOCADOR",105,y,{align:"center"});
+    doc.setTextColor(0); y+=8;
+    doc.setDrawColor(13,148,136); doc.setLineWidth(0.7); doc.line(18,y,192,y); y+=8;
+
+    doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text("DATOS DEL LOCATARIO",18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(9);
+    doc.text("Nombre y apellido: "+d.nombre,18,y); y+=5;
+    doc.text("DNI: "+d.dni,18,y); y+=5;
+    doc.text("Telefono: "+d.tel,18,y); y+=5;
+    if(d.mail){ doc.text("Email: "+d.mail,18,y); y+=5; }
+    y+=3;
+    doc.setFont(undefined,"bold"); doc.setFontSize(10); doc.text("DETALLE DEL ALQUILER",18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(9);
+    doc.text("Unidad: Bicicleta MTB Rodado 29 - Unidad #"+d.id,18,y); y+=5;
+    doc.text("Plan contratado: "+d.plan+" ("+d.duracion+")",18,y); y+=5;
+    doc.text("Importe total: $"+(d.precio||0).toLocaleString("es-AR"),18,y); y+=5;
+    doc.text("Equipamiento incluido: casco de seguridad certificado",18,y); y+=8;
+
+    doc.setFont(undefined,"bold"); doc.setFontSize(10); doc.text("CLAUSULAS",18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(7.5);
+    [
+     "1. OBJETO. El locador entrega en alquiler una bicicleta de montana Rodado 29 con casco de seguridad, en el estado de",
+     "conservacion que el locatario declara verificar y aceptar al momento del retiro.",
+     "2. OBLIGACIONES DEL LOCATARIO. Usar el casco de manera permanente durante la circulacion; respetar las normas de",
+     "transito y la senalizacion de los senderos; no ceder ni subarrendar la unidad a terceros; no circular bajo efectos de",
+     "alcohol o estupefacientes; restituir la unidad en el plazo pactado en la base operativa.",
+     "3. APTITUD Y RIESGOS. El locatario declara saber conducir bicicleta, encontrarse en condiciones psicofisicas adecuadas",
+     "y conocer que el ciclismo de montana conlleva riesgos propios del terreno natural, el clima y su propia impericia,",
+     "asumiendolos de manera informada y voluntaria.",
+     "4. RESPONSABILIDAD POR LA UNIDAD. El locatario responde por danos, roturas, perdida o hurto de la bicicleta y el",
+     "equipamiento ocurridos durante la vigencia del alquiler por causas que le sean imputables.",
+     "5. ALCANCE DE LA RESPONSABILIDAD DEL LOCADOR. Conforme al articulo 1743 del Codigo Civil y Comercial de la Nacion,",
+     "ninguna clausula del presente exime al locador de responder por danos que afecten derechos indisponibles, ni por su",
+     "dolo o el de sus dependientes. No importa renuncia a los derechos de la Ley 24.240 de Defensa del Consumidor.",
+     "6. EMERGENCIAS. El locatario dispone del boton S.O.S. de la aplicacion, que transmite su ubicacion a la base operativa.",
+     "7. DATOS PERSONALES. Los datos se tratan conforme a la Ley 25.326. El titular puede solicitar en cualquier momento el",
+     "acceso, rectificacion o supresion de sus datos ante el locador."
+    ].forEach(function(l){ doc.text(l,18,y); y+=3.6; });
+    y+=4;
+    doc.setFontSize(8);
+    doc.text("Consentimiento para comunicaciones promocionales: "+(d.marketing?"ACEPTA":"NO ACEPTA"),18,y); y+=8;
+
+    doc.setFont(undefined,"bold"); doc.setFontSize(9);
+    doc.text("FIRMA DEL LOCATARIO",18,y); y+=3;
+    if(d.firma){ try{ doc.addImage(d.firma,"JPEG",18,y,70,25); }catch(e){} }
+    y+=27;
+    doc.setLineWidth(0.3); doc.setDrawColor(120); doc.line(18,y,88,y); y+=4;
+    doc.setFont(undefined,"normal"); doc.setFontSize(7.5); doc.setTextColor(90);
+    doc.text(d.nombre+" - DNI "+d.dni,18,y); y+=6;
+    doc.setFontSize(6.8);
+    doc.text("Firma electronica conforme Ley 25.506. Datos de trazabilidad:",18,y); y+=3.2;
+    doc.text("Fecha y hora: "+d.fecha,18,y); y+=3.2;
+    doc.text("Ubicacion GPS al firmar: "+d.gps,18,y); y+=3.2;
+    doc.text("Dispositivo: "+(d.dispositivo||""),18,y);
+    doc.setTextColor(0);
+    doc.save("Contrato_"+d.code+"_"+String(d.nombre).replace(/\s+/g,"_")+".pdf");
+  }catch(e){ alert("No se pudo generar el PDF."); }
+}
+
+function descargarTodos(){
+  if(!contratos.length){ alert("Todavia no se recibieron contratos."); return; }
+  contratos.forEach(function(_,i){ setTimeout(function(){ pdfContrato(i); }, i*700); });
+}
+
+// ═══ CLIENTES ═══
+function renderClientes(){
+  var c=document.getElementById("clients-list");
+  if(!clientes.length){ c.innerHTML="Sin clientes registrados"; c.style.textAlign="center"; return; }
+  c.style.textAlign="left"; c.innerHTML="";
+  clientes.slice().reverse().forEach(function(cl){
+    var d=document.createElement("div"); d.className="cli";
+    d.innerHTML="<div class='cli-n'>"+cl.nombre+"</div>"+
+      "<div class='cli-d'>DNI "+cl.dni+" · 📞 "+cl.tel+(cl.mail?"<br>✉ "+cl.mail:"")+
+      "<br>Bici #"+cl.bici+" · "+cl.code+" · $"+cl.precio.toLocaleString("es-AR")+
+      "<br>"+cl.fecha+"</div>"+
+      (cl.marketing?"<span class='badge-mk'>✓ Acepta promociones</span>":"");
+    c.appendChild(d);
+  });
+}
+function exportarCSV(){
+  if(!clientes.length){ alert("Todavía no hay clientes registrados."); return; }
+  var filas=[["Nombre","DNI","Telefono","Email","Bicicleta","Codigo","Plan","Importe","Fecha","Acepta promociones"]];
+  clientes.forEach(function(c){
+    filas.push([c.nombre,c.dni,c.tel,c.mail,"#"+c.bici,c.code,c.plan,c.precio,c.fecha,c.marketing?"SI":"NO"]);
+  });
+  var csv=filas.map(function(f){
+    return f.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(";");
+  }).join("\r\n");
+  var blob=new Blob(["\ufeff"+csv],{type:"text/csv;charset=utf-8;"});
+  var a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download="PBR_clientes_"+new Date().toISOString().slice(0,10)+".csv";
+  a.click();
+}
+
+// ═══ HEADER / STATS ═══
+function refreshHdr(){
+  var ac=0, sos=0;
+  Object.keys(ST).forEach(function(id){
+    if(ST[id].status!=="available") ac++;
+    if(ST[id].status==="sos") sos++;
+  });
+  document.getElementById("b-ac").textContent=ac+" activa"+(ac!==1?"s":"");
+  var sb=document.getElementById("b-sos");
+  sb.style.display= sos?"":"none"; sb.textContent="🆘 "+sos+" SOS";
+  refreshStats();
+}
+function refreshStats(){
+  var ac=0, fr=0, mk=0;
+  Object.keys(ST).forEach(function(id){ if(ST[id].status!=="available") ac++; else fr++; });
+  clientes.forEach(function(c){ if(c.marketing) mk++; });
+  setText("sv-ac",ac); setText("sv-fr",fr);
+  setText("sv-rv","$"+rev.toLocaleString("es-AR")); setText("sv-to",tot);
+  setText("sv-mk",mk); setText("sv-oc",Math.round(ac/NB*100)+"%"); setText("sv-ct",contratos.length);
+}
+function addHist(code,renter,id,price){
+  var c=document.getElementById("hist");
+  if(c.textContent.trim()==="Sin alquileres aún") c.innerHTML="";
+  var t=new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
+  var d=document.createElement("div");
+  d.style.cssText="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e293b;font-size:12px;";
+  d.innerHTML="<span style='color:#94a3b8'>"+t+" <b style='color:#2dd4bf'>#"+id+"</b></span>"+
+              "<span style='color:#64748b'>"+(renter||"")+"</span>"+
+              "<span style='color:#22c55e;font-weight:700'>$"+price.toLocaleString("es-AR")+"</span>";
+  c.insertBefore(d,c.firstChild);
+}
+
+// ═══ TABS / UTILS ═══
+function tab(n){
+  ["bikes","alerts","clients","contracts","stats"].forEach(function(t){
+    var e=document.getElementById("t-"+t); if(e) e.style.display=(t===n)?"":"none";
+  });
+  document.querySelectorAll(".stab").forEach(function(b,i){
+    var on = ["bikes","alerts","clients","contracts","stats"][i]===n;
+    b.classList.toggle("on",on);
+    if(on) b.style.color="";
+  });
+}
+function fmt(s){ if(!s||s<=0) return "00:00:00";
+  var h=Math.floor(s/3600),m=Math.floor((s%3600)/60),ss=s%60;
+  return p(h)+":"+p(m)+":"+p(ss); }
+function p(n){ return String(n).padStart(2,"0"); }
+function hace(ts){ var s=Math.floor((Date.now()-ts)/1000); return s<60?s+"s":Math.floor(s/60)+"m"; }
+function setText(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+
+(function clk(){ var n=new Date(); setText("clk",p(n.getHours())+":"+p(n.getMinutes())); setTimeout(clk,15000); })();
+
+window.addEventListener("load",function(){ initMap(); initMQTT(); buildCards(); refreshHdr(); renderContratos(); });
+</script>
+</body></html>
