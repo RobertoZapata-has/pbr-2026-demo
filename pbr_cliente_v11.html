@@ -1,0 +1,1796 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<meta name="theme-color" content="#0d9488">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="PBR">
+<title>PBR · Bike Rental</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;font-family:system-ui,-apple-system,sans-serif;background:#1e293b;overscroll-behavior:none;}
+.wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:16px;background:linear-gradient(135deg,#0f172a,#1e293b,#0d3d38);}
+@media(max-width:430px),(display-mode:standalone){.wrap{padding:0;background:#f8fafc;align-items:stretch;}.frame{width:100%!important;max-width:100%!important;border-radius:0!important;border:none!important;box-shadow:none!important;height:100vh!important;}}
+.frame{width:390px;height:820px;background:#f8fafc;border-radius:2rem;border:8px solid #1e293b;box-shadow:0 0 0 2px #334155,0 40px 80px rgba(0,0,0,.5);display:flex;flex-direction:column;overflow:hidden;position:relative;}
+.sbar{background:white;display:flex;justify-content:space-between;align-items:center;padding:6px 18px 2px;font-size:11px;font-weight:700;color:#1e293b;flex-shrink:0;}
+#hdr{background:white;padding:8px 14px 10px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0;border-bottom:1px solid #f1f5f9;}
+.hdr-l{display:flex;align-items:center;gap:8px;}
+.hdr-n{font-size:13px;font-weight:900;color:#1e293b;line-height:1.1;}
+.hdr-s{font-size:9px;font-weight:700;color:#0d9488;letter-spacing:1px;text-transform:uppercase;}
+.gdot{width:7px;height:7px;border-radius:50%;background:#94a3b8;display:inline-block;margin-right:4px;}
+.gdot.on{background:#22c55e;animation:bl 1.5s ease-in-out infinite;}
+.gdot.sim{background:#f59e0b;animation:bl 2s ease-in-out infinite;}
+@keyframes bl{0%,100%{opacity:1;}50%{opacity:.4;}}
+#content{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch;}
+#content::-webkit-scrollbar{display:none;}
+#nav{background:white;border-top:1px solid #f1f5f9;display:flex;justify-content:space-around;padding:8px 4px 16px;flex-shrink:0;box-shadow:0 -4px 20px rgba(0,0,0,.05);}
+.nbt{display:flex;flex-direction:column;align-items:center;gap:3px;background:none;border:none;cursor:pointer;padding:4px 10px;border-radius:10px;color:#94a3b8;}
+.nbt.on{color:#0d9488;}
+.nbt span{font-size:9px;font-weight:800;}
+.card{background:white;border-radius:18px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid #f1f5f9;margin-bottom:14px;}
+.card-teal{background:linear-gradient(135deg,#0d9488,#0f766e);color:white;border:none;}
+.card-dark{background:linear-gradient(135deg,#1e293b,#0f172a);color:white;border:none;}
+.timer{font-size:28px;font-weight:900;font-family:monospace;color:#2dd4bf;letter-spacing:2px;font-variant-numeric:tabular-nums;animation:glo 1.5s ease-in-out infinite alternate;}
+@keyframes glo{from{text-shadow:0 0 8px rgba(45,212,191,.3);}to{text-shadow:0 0 20px rgba(45,212,191,.7);}}
+.step{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;}
+.si-o{background:#0f766e;color:white;}.si-d{background:#ccfbf1;color:#0f766e;}.si-p{background:#e2e8f0;color:#94a3b8;}
+.tc{border:2px solid #e2e8f0;border-radius:18px;padding:15px;background:white;cursor:pointer;margin-bottom:10px;transition:all .2s;}
+.tc.sel{border-color:#0d9488;background:#f0fdfa;transform:translateY(-2px);}
+.hc{border:1.5px solid #e2e8f0;border-radius:10px;padding:8px;text-align:center;font-size:12px;font-weight:600;color:#64748b;cursor:pointer;}
+.hc.sel{background:#f0fdfa;border-color:#0d9488;color:#0f766e;font-weight:900;}
+.bkc{border:2px solid #e2e8f0;border-radius:14px;padding:12px 6px;background:white;cursor:pointer;text-align:center;transition:all .2s;}
+.bkc.sel{border-color:#0d9488;background:#f0fdfa;}
+.btn{width:100%;padding:14px;border:none;border-radius:14px;font-size:14px;font-weight:800;cursor:pointer;transition:all .15s;}
+.btn:active{transform:scale(.97);}
+.btn-t{background:#0d9488;color:white;box-shadow:0 6px 20px rgba(13,148,136,.3);}
+.btn-t:disabled{background:#e2e8f0;color:#94a3b8;box-shadow:none;cursor:not-allowed;transform:none;}
+.btn-g{background:none;border:2px solid #e2e8f0;color:#1e293b;font-size:13px;}
+.btn-r{background:#ef4444;color:white;box-shadow:0 6px 20px rgba(239,68,68,.3);}
+.rc{background:white;border-radius:16px;padding:13px;box-shadow:0 1px 4px rgba(0,0,0,.06);border:1px solid #f1f5f9;display:flex;align-items:center;gap:12px;cursor:pointer;margin-bottom:10px;}
+.trf{background:#f8fafc;border-radius:12px;padding:10px;text-align:center;}
+.trf.pop{background:#f0fdfa;border:2px solid #99f6e4;}
+#mini-map{height:140px;border-radius:14px;overflow:hidden;margin:10px 0;}
+.inp{width:100%;padding:11px 13px;border:2px solid #e2e8f0;border-radius:12px;font-size:14px;color:#1e293b;background:white;outline:none;margin-bottom:10px;font-family:inherit;}
+.inp:focus{border-color:#0d9488;}
+.lbl{font-size:11px;font-weight:700;color:#475569;display:block;margin-bottom:4px;}
+#sig-canvas{width:100%;height:150px;border:2px dashed #cbd5e1;border-radius:14px;background:white;touch-action:none;display:block;}
+.chk-row{display:flex;align-items:flex-start;gap:9px;padding:11px;border:2px solid #e2e8f0;border-radius:12px;margin-bottom:10px;cursor:pointer;background:white;}
+.chk-row.on{border-color:#0d9488;background:#f0fdfa;}
+.chk-box{width:20px;height:20px;border:2px solid #cbd5e1;border-radius:6px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:13px;color:white;margin-top:1px;}
+.chk-row.on .chk-box{background:#0d9488;border-color:#0d9488;}
+.contract-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;max-height:180px;overflow-y:auto;font-size:11px;color:#475569;line-height:1.65;margin-bottom:12px;}
+.contract-box h4{font-size:12px;color:#1e293b;margin:8px 0 4px;}
+.lang-btn{flex:1;border:2px solid #e2e8f0;border-radius:16px;padding:14px 8px;background:white;cursor:pointer;text-align:center;transition:all .2s;}
+.lang-btn.sel{border-color:#0d9488;background:#f0fdfa;}
+.lang-flag{font-size:26px;display:block;margin-bottom:4px;}
+.lang-name{font-size:12px;font-weight:800;color:#1e293b;}
+.doc-drop{border:2px dashed #cbd5e1;border-radius:14px;padding:18px 12px;text-align:center;cursor:pointer;background:white;margin-bottom:10px;}
+.scan-badge{border-radius:10px;padding:9px 11px;font-size:11.5px;font-weight:700;margin-bottom:10px;line-height:1.5;display:none;}
+.sb-ok{background:#f0fdf4;border:1px solid #86efac;color:#15803d;}
+.sb-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;}
+.sb-busy{background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;}
+.sb-err{background:#fef2f2;border:1px solid #fca5a5;color:#b91c1c;}
+.mono-inp{font-family:monospace;letter-spacing:.5px;text-transform:uppercase;font-size:12px;}
+</style>
+</head>
+<body>
+<div class="wrap"><div class="frame">
+<div class="sbar">
+  <span id="sb-t">9:41</span>
+  <div style="display:flex;align-items:center;gap:6px;">
+    <span id="sb-wl" style="font-size:9px;color:#94a3b8;"></span>
+    <span id="sb-mode" style="font-size:9px;color:#94a3b8;">MQTT</span>
+    <div style="width:22px;height:10px;border:1.5px solid #1e293b;border-radius:2px;padding:1px;"><div style="width:75%;height:100%;background:#1e293b;border-radius:1px;"></div></div>
+  </div>
+</div>
+<header id="hdr">
+  <div class="hdr-l">
+    <img src="pbr_logo.jpg" alt="PBR" style="width:38px;height:38px;border-radius:10px;object-fit:cover;border:1.5px solid #f1f5f9;" onerror="this.style.display='none'">
+    <div><div class="hdr-n">POTRERILLOS BIKE RENTAL</div>
+    <div class="hdr-s"><span class="gdot" id="gdot"></span><span id="glbl">—</span></div></div>
+  </div>
+  <div style="display:flex;align-items:center;gap:7px;">
+    <button onclick="toggleLang()" id="lang-chip" style="background:#f0fdfa;border:1px solid #99f6e4;color:#0f766e;font-size:10px;font-weight:800;padding:4px 8px;border-radius:8px;cursor:pointer;">ES</button>
+    <img id="avatar" src="https://ui-avatars.com/api/?name=?&background=0d9488&color=fff&size=64" style="width:30px;height:30px;border-radius:50%;border:2px solid #ccfbf1;">
+  </div>
+</header>
+<div id="content">
+
+<!-- ═══ LOGIN ═══ -->
+<div id="sc-login" style="padding:28px 20px;display:flex;flex-direction:column;align-items:center;min-height:500px;justify-content:center;">
+  <img src="pbr_logo.jpg" alt="PBR" style="width:92px;height:92px;border-radius:22px;object-fit:cover;margin-bottom:16px;box-shadow:0 12px 32px rgba(13,148,136,.4);" onerror="this.style.display='none'">
+  <div style="font-size:20px;font-weight:900;color:#1e293b;margin-bottom:3px;text-align:center;">Potrerillos Bike Rental</div>
+  <div style="font-size:12.5px;color:#64748b;margin-bottom:20px;" data-i="tagline">Precordillera mendocina 🏔️</div>
+
+  <div style="width:100%;max-width:300px;">
+    <label class="lbl" data-i="pickLang">Elegí tu idioma / Choose your language</label>
+    <div style="display:flex;gap:10px;margin-bottom:16px;">
+      <div class="lang-btn sel" id="lb-es" onclick="setLang('es')">
+        <span class="lang-flag">🇦🇷</span><span class="lang-name">Español</span>
+      </div>
+      <div class="lang-btn" id="lb-en" onclick="setLang('en')">
+        <span class="lang-flag">🇬🇧</span><span class="lang-name">English</span>
+      </div>
+      <div class="lang-btn" id="lb-pt" onclick="setLang('pt')">
+        <span class="lang-flag">🇧🇷</span><span class="lang-name">Português</span>
+      </div>
+    </div>
+    <label class="lbl" data-i="yourName">Tu nombre y apellido</label>
+    <input id="name-inp" type="text" class="inp" data-ph="namePh" placeholder="Ej: Juan García" onkeydown="if(event.key==='Enter')doLogin()">
+    <button class="btn btn-t" onclick="doLogin()" data-i="enter">Entrar →</button>
+    <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:12px;" data-i="privacyNote">🔒 Tus datos solo se usan para el alquiler</p>
+  </div>
+</div>
+
+<!-- ═══ HOME ═══ -->
+<div id="sc-home" style="display:none;padding:16px 16px 110px;">
+  <div style="margin-bottom:14px;">
+    <div style="font-size:20px;font-weight:800;color:#1e293b;"><span data-i="hello">¡Hola</span>, <span id="gr-name">—</span>! 👋</div>
+    <div style="font-size:13px;color:#64748b;" data-i="subHello">La precordillera te espera</div>
+  </div>
+  <div id="c-avail" class="card card-teal">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><div style="width:7px;height:7px;border-radius:50%;background:#4ade80;animation:bl 2s infinite;"></div>
+    <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#99f6e4;"><span id="cnt-libres">6</span> <span data-i="bikesAvail">bicis disponibles</span></span></div>
+    <div style="font-size:16px;font-weight:800;margin-bottom:3px;">Rodado 29 · Trail/Hardtail</div>
+    <div style="font-size:12px;color:#99f6e4;margin-bottom:14px;" data-i="bikeSpec">Frenos hidráulicos · Cascos incluidos</div>
+    <button class="btn" style="background:white;color:#0f766e;font-weight:800;" onclick="go('booking')" data-i="bookNow">🚲 Reservar ahora</button>
+  </div>
+  <div id="c-active" class="card card-dark" style="display:none;">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#2dd4bf" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>
+    <span style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#2dd4bf;" data-i="activeRental">Alquiler Activo</span></div>
+    <div id="h-bike" style="font-size:16px;font-weight:800;margin-bottom:3px;">—</div>
+    <div style="font-size:11px;color:#94a3b8;margin-bottom:12px;">📍 Base Embalse Potrerillos · RN7</div>
+    <div style="background:rgba(255,255,255,.08);border-radius:14px;padding:12px;display:flex;align-items:center;justify-content:space-between;border:1px solid rgba(255,255,255,.06);">
+      <div><div style="font-size:10px;color:#94a3b8;" data-i="timeLeft">Tiempo restante</div><div class="timer" id="h-timer">--:--:--</div></div>
+      <button onclick="go('active')" style="background:#2dd4bf;color:#0f172a;border:none;padding:9px 13px;border-radius:11px;font-weight:800;font-size:12px;cursor:pointer;" data-i="details">Ver detalle</button>
+    </div>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:800;color:#1e293b;margin-bottom:10px;" data-i="rates">💰 Tarifas 2026</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+      <div class="trf"><div style="font-size:10px;color:#64748b;margin-bottom:3px;" data-i="perHour">Por hora</div><div style="font-size:15px;font-weight:900;color:#16a34a;">$4.000</div></div>
+      <div class="trf pop"><div style="font-size:9px;color:#0d9488;font-weight:700;" data-i="popular">⭐ Popular</div><div style="font-size:15px;font-weight:900;color:#0f766e;">$14.000</div><div style="font-size:9px;color:#64748b;">4 hs</div></div>
+      <div class="trf"><div style="font-size:10px;color:#64748b;margin-bottom:3px;" data-i="fullDay">Día completo</div><div style="font-size:15px;font-weight:900;color:#1e293b;">$24.000</div></div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+    <div style="font-size:13px;font-weight:800;color:#1e293b;" data-i="routes">🗺️ Rutas</div>
+    <button onclick="go('routes')" style="font-size:12px;color:#0d9488;font-weight:600;background:none;border:none;cursor:pointer;" data-i="seeAll">Ver todas →</button>
+  </div>
+  <div id="h-routes"></div>
+
+  <!-- Tarjeta de pedido pendiente -->
+  <div id="c-pedido" class="card" style="display:none;border-left:4px solid #f59e0b;">
+    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:6px;">
+      <div style="font-size:13px;font-weight:800;color:#1e293b;" data-i="myRequest">Mi pedido de reserva</div>
+      <span id="ped-estado" style="font-size:10px;font-weight:800;padding:3px 9px;border-radius:10px;background:#fef3c7;color:#b45309;">⏳</span>
+    </div>
+    <div id="ped-detalle" style="font-size:12px;color:#64748b;line-height:1.7;"></div>
+    <button onclick="cancelarPedido()" style="background:none;border:none;color:#ef4444;font-size:11.5px;font-weight:700;cursor:pointer;padding:8px 0 0;" data-i="cancelReq">Cancelar pedido</button>
+  </div>
+
+  <button onclick="go('turno')" class="btn btn-g" style="margin-bottom:14px;border-color:#0d9488;color:#0f766e;" data-i="bookSlot">📅 Reservar turno para otro día</button>
+
+  <button onclick="cerrarSesion()" style="width:100%;background:none;border:none;color:#94a3b8;font-size:11.5px;font-weight:600;cursor:pointer;padding:14px 8px 4px;" data-i="logout">Cambiar de usuario / cerrar sesión</button>
+</div>
+
+<!-- ═══ BOOKING ═══ -->
+<div id="sc-booking" style="display:none;">
+  <div style="background:white;padding:14px 16px 12px;border-bottom:1px solid #f1f5f9;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+      <button onclick="bookBack()" style="display:flex;align-items:center;gap:4px;color:#64748b;font-size:13px;font-weight:600;background:none;border:none;cursor:pointer;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg><span data-i="back">Volver</span></button>
+      <span style="font-size:14px;font-weight:800;color:#1e293b;" data-i="newBooking">Nueva Reserva</span><div style="width:50px;"></div>
+    </div>
+    <div style="display:flex;align-items:center;justify-content:center;gap:5px;">
+      <div class="step si-o" id="si-1">1</div><div style="flex:1;max-width:32px;height:2px;background:#e2e8f0;"></div>
+      <div class="step si-p" id="si-2">2</div><div style="flex:1;max-width:32px;height:2px;background:#e2e8f0;"></div>
+      <div class="step si-p" id="si-3">3</div><div style="flex:1;max-width:32px;height:2px;background:#e2e8f0;"></div>
+      <div class="step si-p" id="si-4">4</div>
+    </div>
+  </div>
+
+  <!-- Paso 1 -->
+  <div id="bk-1" style="padding:16px 16px 110px;">
+    <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:4px;" data-i="howLong">¿Cuánto tiempo querés?</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:14px;" data-i="pickPlan">Elegí el plan para tu aventura</div>
+    <div id="t-hour" class="tc" onclick="selT('hour')">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;gap:12px;"><div style="width:44px;height:44px;background:#f0fdf4;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">⚡</div>
+        <div><div style="font-weight:800;color:#1e293b;font-size:14px;" data-i="perHour">Por hora</div><div style="font-size:11px;color:#64748b;" data-i="quickRide">Salida rápida</div></div></div>
+        <div style="text-align:right;"><div style="font-size:18px;font-weight:900;color:#16a34a;">$4.000</div><div style="font-size:10px;color:#94a3b8;" data-i="perHourUnit">/ hora</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;">
+        <div class="hc" id="hc-1" onclick="event.stopPropagation();selH(1)">1 h<br><span style="font-size:10px;color:#94a3b8;">$4.000</span></div>
+        <div class="hc" id="hc-2" onclick="event.stopPropagation();selH(2)">2 h<br><span style="font-size:10px;color:#94a3b8;">$8.000</span></div>
+        <div class="hc" id="hc-3" onclick="event.stopPropagation();selH(3)">3 h<br><span style="font-size:10px;color:#94a3b8;">$12.000</span></div>
+      </div>
+    </div>
+    <div id="t-half" class="tc" onclick="selT('half')" style="position:relative;overflow:hidden;">
+      <div style="position:absolute;top:10px;right:10px;background:#0d9488;color:white;font-size:9px;font-weight:800;padding:3px 8px;border-radius:20px;" data-i="popularTag">⭐ POPULAR</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;"><div style="width:44px;height:44px;background:#f0fdfa;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">🏔️</div>
+        <div><div style="font-weight:800;color:#1e293b;font-size:14px;" data-i="halfDay">Medio Día</div><div style="font-size:11px;color:#64748b;" data-i="halfDaySub">4 horas de aventura</div></div></div>
+        <div style="text-align:right;margin-top:16px;"><div style="font-size:18px;font-weight:900;color:#0f766e;">$14.000</div><div style="font-size:10px;color:#94a3b8;" data-i="fourHours">4 horas</div></div>
+      </div>
+    </div>
+    <div id="t-day" class="tc" onclick="selT('day')">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div style="display:flex;align-items:center;gap:12px;"><div style="width:44px;height:44px;background:#f8fafc;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;">🌄</div>
+        <div><div style="font-weight:800;color:#1e293b;font-size:14px;" data-i="fullDay">Día Completo</div><div style="font-size:11px;color:#64748b;" data-i="eightHours">8 horas</div></div></div>
+        <div style="text-align:right;"><div style="font-size:18px;font-weight:900;color:#1e293b;">$24.000</div><div style="font-size:10px;color:#94a3b8;" data-i="eightHours">8 horas</div></div>
+      </div>
+    </div>
+    <button id="bt2" class="btn btn-t" disabled onclick="goBk2()" data-i="pickBike">Elegir bicicleta →</button>
+  </div>
+
+  <!-- Paso 2 -->
+  <div id="bk-2" style="display:none;padding:16px 16px 110px;">
+    <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:4px;" data-i="pickYourBike">Elegí tu bicicleta</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:10px;" data-i="bikeSpec2">Rodado 29 · Frenos hidráulicos</div>
+    <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:10px;margin-bottom:14px;font-size:11px;color:#0f766e;" data-i="qrTip">
+      💡 También podés escanear el QR pegado en el cuadro de la bici con la cámara del celular.
+    </div>
+    <div id="bkg" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;"></div>
+    <button id="bt3" class="btn btn-t" disabled onclick="goBk3()" data-i="continue">Continuar →</button>
+  </div>
+
+  <!-- Paso 3: contrato -->
+  <div id="bk-3" style="display:none;padding:16px 16px 110px;">
+    <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:4px;" data-i="rentalContract">Contrato de alquiler</div>
+    <div style="font-size:12px;color:#64748b;margin-bottom:14px;" data-i="fillSign">Completá tus datos y firmá</div>
+
+    <label class="lbl" id="lbl-doc">DNI</label>
+    <input id="in-dni" type="text" class="inp" data-ph="docPh" placeholder="Ej: 30123456" oninput="chkForm()">
+    <label class="lbl" data-i="phone">Teléfono de contacto</label>
+    <input id="in-tel" type="text" inputmode="tel" class="inp" data-ph="phonePh" placeholder="Ej: 261 555-1234" oninput="chkForm()">
+    <label class="lbl"><span data-i="email">Email</span> <span style="color:#94a3b8;font-weight:500;" data-i="optional">(opcional)</span></label>
+    <input id="in-mail" type="email" class="inp" placeholder="mail@mail.com">
+
+    <!-- Documento -->
+    <label class="lbl" id="lbl-docphoto">Foto del DNI (dorso, con el código de barras) <span style="color:#ef4444;">*</span></label>
+    <input id="in-docfoto" type="file" accept="image/*" capture="environment" style="display:none;" onchange="cargarFotoDoc(this)">
+    <div id="doc-drop" class="doc-drop" onclick="document.getElementById('in-docfoto').click()">
+      <div style="font-size:26px;margin-bottom:4px;">📷</div>
+      <div style="font-size:12.5px;font-weight:700;color:#0f766e;" id="doc-drop-t">Tomar foto del dorso del DNI</div>
+      <div style="font-size:10.5px;color:#94a3b8;margin-top:3px;" id="doc-drop-s">Se lee el código de barras automáticamente</div>
+    </div>
+    <div id="doc-prev" style="display:none;margin-bottom:10px;">
+      <img id="doc-img" style="width:100%;border-radius:12px;border:2px solid #0d9488;display:block;">
+      <button onclick="borrarFotoDoc()" style="background:none;border:none;color:#0d9488;font-size:12px;font-weight:700;cursor:pointer;padding:8px 0;" data-i="retake">🗑 Sacar otra foto</button>
+    </div>
+    <div id="scan-msg" class="scan-badge"></div>
+
+    <!-- MRZ solo para pasaporte -->
+    <div id="mrz-box" style="display:none;">
+      <label class="lbl" data-i="mrzLabel">Machine-readable zone — second line (44 characters)</label>
+      <input id="in-mrz" type="text" class="inp mono-inp" placeholder="L898902C36UTO7408122F1204159ZE184226B&lt;&lt;&lt;&lt;&lt;10" oninput="validarMRZinput()">
+      <div id="mrz-msg" class="scan-badge"></div>
+    </div>
+
+    <div style="font-size:12px;font-weight:800;color:#1e293b;margin:14px 0 6px;" data-i="terms">📄 Términos del alquiler</div>
+    <div class="contract-box" id="contract-text"></div>
+
+    <div class="chk-row" id="chk-c" onclick="toggleChk('c')">
+      <div class="chk-box" id="box-c">✓</div>
+      <div style="font-size:12px;color:#1e293b;font-weight:600;line-height:1.5;" data-i="acceptTerms">Leí y acepto los términos del contrato de alquiler <span style="color:#ef4444;">*</span></div>
+    </div>
+    <div class="chk-row" id="chk-m" onclick="toggleChk('m')">
+      <div class="chk-box" id="box-m">✓</div>
+      <div style="font-size:12px;color:#1e293b;font-weight:600;line-height:1.5;" data-i="acceptPromo">Quiero recibir promociones y novedades<br><span style="font-size:10px;color:#64748b;font-weight:400;">Opcional. Podés darte de baja cuando quieras.</span></div>
+    </div>
+
+    <div style="font-size:12px;font-weight:800;color:#1e293b;margin:14px 0 6px;" data-i="signHere">✍️ Firmá con el dedo</div>
+    <canvas id="sig-canvas"></canvas>
+    <button onclick="clearSig()" style="background:none;border:none;color:#0d9488;font-size:12px;font-weight:700;cursor:pointer;padding:8px 0;margin-bottom:8px;" data-i="clearSign">🗑 Borrar firma</button>
+
+    <button id="bt4" class="btn btn-t" disabled onclick="goBk4()" data-i="reviewBooking">Revisar reserva →</button>
+  </div>
+
+  <!-- Paso 4 -->
+  <div id="bk-4" style="display:none;padding:16px 16px 110px;">
+    <div style="font-size:16px;font-weight:800;color:#1e293b;margin-bottom:12px;" data-i="confirmBooking">Confirmá tu reserva</div>
+    <div class="card">
+      <div style="display:flex;align-items:center;gap:12px;padding-bottom:13px;border-bottom:1px solid #f1f5f9;margin-bottom:13px;">
+        <img src="pbr_logo.jpg" style="width:44px;height:44px;border-radius:12px;object-fit:cover;" onerror="this.style.display='none'">
+        <div><div id="cf-b" style="font-weight:800;color:#1e293b;">—</div><div style="font-size:12px;color:#64748b;">Potrerillos Bike Rental</div></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:9px;font-size:13px;">
+        <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;" data-i="holder">Titular</span><span id="cf-n" style="font-weight:700;color:#1e293b;">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;" data-i="plan">Plan</span><span id="cf-p" style="font-weight:700;color:#1e293b;">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;" data-i="duration">Duración</span><span id="cf-d" style="font-weight:700;color:#1e293b;">—</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;" data-i="pickup">Retiro</span><span style="font-weight:700;color:#1e293b;">Base Embalse · RN7</span></div>
+        <div style="display:flex;justify-content:space-between;padding-top:9px;border-top:1px solid #f1f5f9;"><span style="font-weight:800;color:#1e293b;" data-i="total">Total</span><span id="cf-pr" style="font-size:18px;font-weight:900;color:#0f766e;">$0</span></div>
+      </div>
+    </div>
+    <div style="background:#f0fdfa;border:1px solid #99f6e4;border-radius:12px;padding:11px;margin-bottom:14px;font-size:11px;color:#0f766e;" data-i="signedNote">✍️ Contrato firmado electrónicamente. Vas a poder descargar el PDF al confirmar.</div>
+    <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:11px;margin-bottom:14px;font-size:11px;color:#92400e;" data-i="payNote">⚠️ El pago es en el punto de retiro. Casco incluido sin cargo.</div>
+    <button class="btn btn-t" onclick="confirmBk()" data-i="confirmBtn">✅ Confirmar Reserva</button>
+  </div>
+
+  <!-- Éxito -->
+  <div id="bk-ok" style="display:none;padding:24px 16px 110px;text-align:center;">
+    <div style="width:72px;height:72px;background:#f0fdfa;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;"><svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#0d9488" stroke-width="2.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+    <div style="font-size:22px;font-weight:900;color:#1e293b;margin-bottom:6px;" data-i="bookingOk">¡Reserva confirmada!</div>
+    <div style="font-size:13px;color:#64748b;margin-bottom:18px;" data-i="bikeReady">Tu bici está lista en la base 🎉</div>
+    <div style="background:linear-gradient(135deg,#0d9488,#0f766e);border-radius:18px;padding:18px;margin-bottom:14px;">
+      <div style="font-size:10px;color:#99f6e4;letter-spacing:1px;text-transform:uppercase;margin-bottom:4px;" data-i="bookingCode">Código de reserva</div>
+      <div id="ok-code" style="font-size:24px;font-weight:900;color:white;letter-spacing:2px;">—</div>
+    </div>
+    <div class="card" style="text-align:left;font-size:13px;">
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#64748b;" data-i="bike">Bicicleta</span><span id="ok-b" style="font-weight:700;">—</span></div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:8px;"><span style="color:#64748b;" data-i="duration">Duración</span><span id="ok-d" style="font-weight:700;">—</span></div>
+      <div style="display:flex;justify-content:space-between;"><span style="color:#64748b;" data-i="total">Total</span><span id="ok-p" style="font-weight:900;color:#0f766e;font-size:15px;">$0</span></div>
+    </div>
+    <button class="btn btn-g" onclick="descargarPDF()" style="margin-bottom:10px;" data-i="downloadPdf">📄 Descargar contrato PDF</button>
+    <button class="btn btn-t" onclick="startRental()" style="margin-bottom:10px;" data-i="startRental">🚴 Iniciar alquiler</button>
+    <button onclick="go('home')" style="background:none;border:none;color:#64748b;font-size:13px;font-weight:600;cursor:pointer;padding:8px;width:100%;" data-i="backHome">Volver al inicio</button>
+  </div>
+</div>
+
+<!-- ═══ ACTIVE ═══ -->
+<div id="sc-active" style="display:none;padding:16px 16px 110px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+    <button onclick="go('home')" style="background:none;border:none;cursor:pointer;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div style="font-size:16px;font-weight:800;color:#1e293b;" data-i="myRental">Mi Alquiler</div>
+  </div>
+  <div class="card card-dark" style="text-align:center;padding:22px 16px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#2dd4bf;margin-bottom:4px;" data-i="timeLeftUp">⏱ Tiempo restante</div>
+    <div class="timer" id="a-timer" style="font-size:36px;margin-bottom:10px;">--:--:--</div>
+    <div id="a-bike" style="font-size:13px;font-weight:700;color:#94a3b8;">—</div>
+    <div id="a-type" style="font-size:11px;color:#475569;margin-top:3px;">—</div>
+  </div>
+  <div class="card" style="padding:12px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+      <div style="font-size:12px;font-weight:700;color:#1e293b;" data-i="myLocation">📡 Mi ubicación GPS</div>
+      <div style="font-size:10px;color:#64748b;" id="a-gst">—</div>
+    </div>
+    <div id="mini-map"></div>
+    <div style="font-size:10px;color:#94a3b8;text-align:center;margin-top:5px;font-family:monospace;" id="a-coords">—</div>
+    <div id="wl-note" style="font-size:10px;color:#0f766e;background:#f0fdfa;border-radius:8px;padding:7px;margin-top:8px;text-align:center;display:none;" data-i="screenOn">🔆 Pantalla activa para no perder el GPS</div>
+  </div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+    <button onclick="go('routes')" class="btn btn-g" style="font-size:12px;padding:12px;" data-i="routesBtn">🗺️ Rutas</button>
+    <button onclick="descargarPDF()" class="btn btn-g" style="font-size:12px;padding:12px;" data-i="contractBtn">📄 Contrato</button>
+  </div>
+  <button onclick="devolverBici()" class="btn btn-g" style="margin-bottom:10px;border-color:#0d9488;color:#0f766e;" data-i="returnBike">✅ Devolver bicicleta</button>
+  <button onclick="triggerSOS()" class="btn btn-r" style="font-size:16px;padding:16px;" data-i="sosBtn">🆘 EMERGENCIA / SOS</button>
+</div>
+
+
+<!-- ═══ PEDIDO DE TURNO ═══ -->
+<div id="sc-turno" style="display:none;padding:16px 16px 110px;">
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+    <button onclick="go('home')" style="background:none;border:none;cursor:pointer;color:#64748b;"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div><div style="font-size:16px;font-weight:800;color:#1e293b;" data-i="slotTitle">Pedido de reserva</div>
+    <div style="font-size:11.5px;color:#64748b;" data-i="slotSub">Elegí día y horario.</div></div>
+  </div>
+
+  <label class="lbl" data-i="slotDate">Fecha</label>
+  <input id="tu-fecha" type="date" class="inp" onchange="calcSena()">
+
+  <label class="lbl" data-i="slotBand">Franja horaria</label>
+  <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:12px;">
+    <div class="tc" id="fr-m" onclick="selFranja('m')" style="padding:11px;margin:0;">
+      <div style="font-size:13px;font-weight:800;color:#1e293b;" data-i="slotMorning">Mañana · 9 a 13</div></div>
+    <div class="tc" id="fr-t" onclick="selFranja('t')" style="padding:11px;margin:0;">
+      <div style="font-size:13px;font-weight:800;color:#1e293b;" data-i="slotAfternoon">Tarde · 13 a 17</div></div>
+    <div class="tc" id="fr-a" onclick="selFranja('a')" style="padding:11px;margin:0;">
+      <div style="font-size:13px;font-weight:800;color:#1e293b;" data-i="slotEvening">Atardecer · 17 a 21</div></div>
+  </div>
+
+  <label class="lbl" data-i="slotPlan">Plan</label>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:14px;">
+    <div class="hc" id="tp-hour" onclick="selPlanTurno('hour')" style="padding:11px 6px;"><span data-i="perHour">Por hora</span><br><span style="font-size:11px;font-weight:900;color:#16a34a;">$4.000</span></div>
+    <div class="hc" id="tp-half" onclick="selPlanTurno('half')" style="padding:11px 6px;"><span data-i="halfDay">Medio Día</span><br><span style="font-size:11px;font-weight:900;color:#0f766e;">$14.000</span></div>
+    <div class="hc" id="tp-day"  onclick="selPlanTurno('day')"  style="padding:11px 6px;"><span data-i="fullDay">Día completo</span><br><span style="font-size:11px;font-weight:900;color:#1e293b;">$24.000</span></div>
+  </div>
+
+  <label class="lbl" data-i="phone">Teléfono de contacto</label>
+  <input id="tu-tel" type="text" inputmode="tel" class="inp" data-ph="phonePh" placeholder="" oninput="calcSena()">
+  <label class="lbl"><span data-i="email">Email</span> <span style="color:#94a3b8;font-weight:500;" data-i="optional">(opcional)</span></label>
+  <input id="tu-mail" type="email" class="inp" placeholder="mail@mail.com">
+
+  <!-- Importes -->
+  <div class="card" style="background:#f0fdfa;border-color:#99f6e4;">
+    <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:7px;">
+      <span style="color:#0f766e;" data-i="slotTotal">Total del alquiler</span>
+      <span id="tu-total" style="font-weight:700;color:#0f766e;">$0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:15px;padding-top:8px;border-top:1px solid #99f6e4;">
+      <span style="font-weight:800;color:#0f766e;" data-i="slotDeposit">Seña a transferir (50%)</span>
+      <span id="tu-sena" style="font-weight:900;color:#0f766e;font-size:19px;">$0</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:11.5px;margin-top:6px;">
+      <span style="color:#64748b;" data-i="slotRest">Resto al retirar la bici</span>
+      <span id="tu-resto" style="font-weight:600;color:#64748b;">$0</span></div>
+  </div>
+
+  <!-- Datos bancarios -->
+  <div class="card">
+    <div style="font-size:12.5px;font-weight:800;color:#1e293b;margin-bottom:10px;" data-i="payTitle">💳 Datos para la transferencia</div>
+    <div style="font-size:12px;line-height:2;color:#475569;">
+      <div style="display:flex;justify-content:space-between;"><span data-i="payAlias">Alias</span><b id="pg-alias" style="color:#0f766e;font-family:monospace;">—</b></div>
+      <div style="display:flex;justify-content:space-between;"><span data-i="payCbu">CBU</span><b id="pg-cbu" style="color:#1e293b;font-family:monospace;font-size:11px;">—</b></div>
+      <div style="display:flex;justify-content:space-between;"><span data-i="payHolder">Titular</span><b id="pg-tit" style="color:#1e293b;">—</b></div>
+    </div>
+    <button onclick="copiarAlias()" class="btn btn-g" style="margin-top:10px;padding:10px;font-size:12px;" data-i="payCopy">Copiar alias</button>
+  </div>
+
+  <!-- Comprobante -->
+  <label class="lbl" data-i="proofLabel">Comprobante de transferencia <span style="color:#ef4444;">*</span></label>
+  <input id="tu-comp" type="file" accept="image/*" style="display:none;" onchange="cargarComprobante(this)">
+  <div id="comp-drop" class="doc-drop" onclick="document.getElementById('tu-comp').click()">
+    <div style="font-size:26px;margin-bottom:4px;">🧾</div>
+    <div style="font-size:12.5px;font-weight:700;color:#0f766e;" data-i="proofDrop">Subir captura del comprobante</div>
+    <div style="font-size:10.5px;color:#94a3b8;margin-top:3px;" data-i="proofSub">Se envía junto al pedido</div>
+  </div>
+  <div id="comp-prev" style="display:none;margin-bottom:10px;">
+    <img id="comp-img" style="width:100%;border-radius:12px;border:2px solid #0d9488;display:block;">
+    <button onclick="borrarComprobante()" style="background:none;border:none;color:#0d9488;font-size:12px;font-weight:700;cursor:pointer;padding:8px 0;" data-i="retake">🗑 Subir otra</button>
+  </div>
+
+  <div style="background:#fffbeb;border:1px solid #fcd34d;border-radius:12px;padding:11px;margin-bottom:14px;font-size:11px;color:#92400e;" data-i="slotWarn">
+    ⚠️ Tu turno queda reservado recién cuando confirmamos la transferencia.
+  </div>
+
+  <button id="bt-req" class="btn btn-t" disabled onclick="enviarPedido()" data-i="sendReq">📩 Enviar pedido de reserva</button>
+</div>
+
+<!-- ═══ ROUTES ═══ -->
+<div id="sc-routes" style="display:none;padding:16px 16px 110px;">
+  <div style="margin-bottom:14px;"><div style="font-size:20px;font-weight:800;color:#1e293b;" data-i="routeCatalog">Catálogo de Rutas</div>
+  <div style="font-size:13px;color:#64748b;" data-i="routeSub">Circuitos verificados · Potrerillos</div></div>
+  <div id="all-rt"></div>
+</div>
+
+<!-- ═══ ROUTE DETAIL ═══ -->
+<div id="sc-rdet" style="display:none;padding-bottom:110px;">
+  <div style="height:185px;position:relative;overflow:hidden;">
+    <img src="https://images.unsplash.com/photo-1565008447742-97f6f38c985c?q=80&w=800&auto=format&fit=crop" style="width:100%;height:100%;object-fit:cover;">
+    <div style="position:absolute;inset:0;background:linear-gradient(to top,rgba(15,23,42,.9),transparent 60%);"></div>
+    <button onclick="go('routes')" style="position:absolute;top:12px;left:12px;background:rgba(255,255,255,.2);backdrop-filter:blur(8px);border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div style="position:absolute;bottom:12px;left:12px;right:12px;">
+      <span id="rd-diff" style="font-size:11px;font-weight:800;padding:3px 10px;border-radius:6px;background:#22c55e;color:white;">—</span>
+      <div id="rd-name" style="font-size:21px;font-weight:900;color:white;margin-top:5px;">—</div>
+    </div>
+  </div>
+  <div style="padding:0 14px 14px;">
+    <div style="background:white;border-radius:18px;padding:12px;box-shadow:0 2px 8px rgba(0,0,0,.08);border:1px solid #f1f5f9;margin-top:-22px;position:relative;z-index:10;display:flex;justify-content:space-around;margin-bottom:14px;">
+      <div style="text-align:center;"><div style="font-size:10px;color:#94a3b8;" data-i="distance">Distancia</div><div id="rd-dist" style="font-weight:800;color:#1e293b;font-size:13px;">—</div></div>
+      <div style="width:1px;background:#f1f5f9;"></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:#94a3b8;" data-i="time">Tiempo</div><div id="rd-time" style="font-weight:800;color:#1e293b;font-size:13px;">—</div></div>
+      <div style="width:1px;background:#f1f5f9;"></div>
+      <div style="text-align:center;"><div style="font-size:10px;color:#94a3b8;" data-i="elevation">Desnivel</div><div id="rd-elev" style="font-weight:800;color:#1e293b;font-size:13px;">—</div></div>
+    </div>
+    <div style="font-size:13px;font-weight:700;color:#1e293b;margin-bottom:7px;" data-i="description">Descripción</div>
+    <div id="rd-desc" style="font-size:13px;color:#475569;line-height:1.65;margin-bottom:16px;">—</div>
+    <button onclick="go('gpsmap')" class="btn btn-t" style="margin-bottom:10px;" data-i="seeMap">▶ Ver en el mapa</button>
+    <button onclick="abrirMaps()" class="btn btn-g" data-i="howToGet">📍 Cómo llegar (Google Maps)</button>
+  </div>
+</div>
+
+<!-- ═══ GPS MAP ═══ -->
+<div id="sc-gpsmap" style="display:none;position:absolute;inset:0;z-index:50;flex-direction:column;">
+  <div style="background:#1e293b;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;">
+    <button onclick="go('rdet')" style="background:rgba(255,255,255,.1);border:none;border-radius:50%;width:34px;height:34px;cursor:pointer;color:white;display:flex;align-items:center;justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg></button>
+    <div style="text-align:center;"><div id="gm-t" style="font-weight:800;font-size:13px;color:white;">—</div><div style="font-size:10px;color:#2dd4bf;">● GPS</div></div>
+    <div style="width:34px;"></div>
+  </div>
+  <div style="flex:1;position:relative;"><iframe id="gm-f" style="position:absolute;inset:0;width:100%;height:100%;border:none;" allowfullscreen src=""></iframe></div>
+</div>
+
+</div><!-- /content -->
+
+<nav id="nav" style="display:none;">
+  <button class="nbt on" id="nb-home" onclick="go('home')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg><span data-i="navHome">Inicio</span></button>
+  <button class="nbt" id="nb-booking" onclick="go('booking')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg><span data-i="navBook">Reservar</span></button>
+  <button class="nbt" id="nb-routes" onclick="go('routes')"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="3 6 9 3 15 6 21 3 21 18 15 21 9 18 3 21"/><line x1="9" y1="3" x2="9" y2="18"/><line x1="15" y1="6" x2="15" y2="21"/></svg><span data-i="navRoutes">Rutas</span></button>
+  <button class="nbt" onclick="triggerSOS()" style="color:#ef4444;"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg><span>S.O.S</span></button>
+</nav>
+</div></div>
+
+<div id="modal" style="display:none;position:fixed;inset:0;z-index:200;background:rgba(15,23,42,.55);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:20px;">
+  <div style="background:white;border-radius:22px;padding:22px;max-width:320px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.2);text-align:center;">
+    <div id="m-ico" style="font-size:38px;margin-bottom:10px;">✅</div>
+    <div id="m-tit" style="font-size:16px;font-weight:900;color:#1e293b;margin-bottom:7px;">—</div>
+    <div id="m-txt" style="font-size:13px;color:#64748b;line-height:1.65;margin-bottom:18px;">—</div>
+    <button id="m-btn" onclick="closeModal()" style="width:100%;background:#0d9488;color:white;font-weight:800;font-size:14px;padding:12px;border:none;border-radius:14px;cursor:pointer;" data-i="gotIt">Entendido</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════ IDIOMAS ═══════════════
+var LANG = "es";
+var T = {
+es:{
+ tagline:"Precordillera mendocina 🏔️", pickLang:"Elegí tu idioma / Choose your language",
+ yourName:"Tu nombre y apellido", namePh:"Ej: Juan García", enter:"Entrar →",
+ privacyNote:"🔒 Tus datos solo se usan para el alquiler",
+ hello:"¡Hola", subHello:"La precordillera te espera", bikesAvail:"bicis disponibles",
+ bikeSpec:"Frenos hidráulicos · Cascos incluidos", bookNow:"🚲 Reservar ahora",
+ activeRental:"Alquiler Activo", timeLeft:"Tiempo restante", details:"Ver detalle",
+ rates:"💰 Tarifas 2026", perHour:"Por hora", popular:"⭐ Popular", fullDay:"Día completo",
+ routes:"🗺️ Rutas", seeAll:"Ver todas →", logout:"Cambiar de usuario / cerrar sesión",
+ back:"Volver", newBooking:"Nueva Reserva", howLong:"¿Cuánto tiempo querés?",
+ pickPlan:"Elegí el plan para tu aventura", quickRide:"Salida rápida", perHourUnit:"/ hora",
+ popularTag:"⭐ POPULAR", halfDay:"Medio Día", halfDaySub:"4 horas de aventura",
+ fourHours:"4 horas", eightHours:"8 horas", pickBike:"Elegir bicicleta →",
+ pickYourBike:"Elegí tu bicicleta", bikeSpec2:"Rodado 29 · Frenos hidráulicos",
+ qrTip:"💡 También podés escanear el QR pegado en el cuadro de la bici con la cámara del celular.",
+ continue:"Continuar →", rentalContract:"Contrato de alquiler", fillSign:"Completá tus datos y firmá",
+ docLabel:"DNI", docPh:"Ej: 30123456", phone:"Teléfono de contacto", phonePh:"Ej: 261 555-1234",
+ email:"Email", optional:"(opcional)",
+ docPhotoLabel:"Foto del DNI (dorso, con el código de barras)",
+ docDropT:"Tomar foto del dorso del DNI", docDropS:"Se lee el código de barras automáticamente",
+ retake:"🗑 Sacar otra foto", terms:"📄 Términos del alquiler",
+ acceptTerms:"Leí y acepto los términos del contrato de alquiler",
+ acceptPromo:"Quiero recibir promociones y novedades",
+ promoSub:"Opcional. Podés darte de baja cuando quieras.",
+ signHere:"✍️ Firmá con el dedo", clearSign:"🗑 Borrar firma", reviewBooking:"Revisar reserva →",
+ confirmBooking:"Confirmá tu reserva", holder:"Titular", plan:"Plan", duration:"Duración",
+ pickup:"Retiro", total:"Total",
+ signedNote:"✍️ Contrato firmado electrónicamente. Vas a poder descargar el PDF al confirmar.",
+ payNote:"⚠️ El pago es en el punto de retiro. Casco incluido sin cargo.",
+ confirmBtn:"✅ Confirmar Reserva", bookingOk:"¡Reserva confirmada!",
+ bikeReady:"Tu bici está lista en la base 🎉", bookingCode:"Código de reserva",
+ bike:"Bicicleta", downloadPdf:"📄 Descargar contrato PDF", startRental:"🚴 Iniciar alquiler",
+ backHome:"Volver al inicio", myRental:"Mi Alquiler", timeLeftUp:"⏱ Tiempo restante",
+ myLocation:"📡 Mi ubicación GPS", screenOn:"🔆 Pantalla activa para no perder el GPS",
+ routesBtn:"🗺️ Rutas", contractBtn:"📄 Contrato", returnBike:"✅ Devolver bicicleta",
+ sosBtn:"🆘 EMERGENCIA / SOS", routeCatalog:"Catálogo de Rutas",
+ routeSub:"Circuitos verificados · Potrerillos", distance:"Distancia", time:"Tiempo",
+ elevation:"Desnivel", description:"Descripción", seeMap:"▶ Ver en el mapa",
+ howToGet:"📍 Cómo llegar (Google Maps)", navHome:"Inicio", navBook:"Reservar",
+ navRoutes:"Rutas", gotIt:"Entendido", free:"✓ Libre", inUse:"🔒 En uso",
+ mrzLabel:"Zona legible por máquina — segunda línea (44 caracteres)",
+ scanBusy:"🔍 Leyendo el código de barras del DNI...",
+ scanOkMatch:"✅ DNI verificado: los datos del código coinciden con lo que ingresaste.",
+ scanMismatch:"⚠️ El código dice DNI {x}, pero ingresaste otro número. Revisá el dato.",
+ scanNoCode:"⚠️ No se pudo leer el código de barras. Verificá que sea el dorso del DNI y que la foto esté nítida. Podés continuar igual; la base validará el documento al entregar la bici.",
+ mrzOk:"✅ Pasaporte verificado: los dígitos de control son correctos.",
+ mrzBad:"⚠️ Los dígitos de control no cierran. Revisá que hayas copiado bien la segunda línea.",
+ mrzShort:"La segunda línea tiene 44 caracteres. Van {n}.",
+ sosSent:"SOS enviado", sosTxt:"Ubicación enviada a la base ({c}). Permanecé en el lugar. Ante emergencia médica llamá al 911.",
+ pedal:"¡A pedalear!", pedalTxt:"Tu contador de {d} ya corre. ¡Disfrutá Potrerillos!",
+ timeUp:"Tiempo cumplido", timeUpTxt:"Devolvé la bicicleta en la base del Embalse. ¡Gracias!",
+ returned:"Bicicleta devuelta", returnedTxt:"Gracias por elegir Potrerillos Bike Rental. ¡Te esperamos!",
+ confirmReturn:"¿Confirmás que devolvés la bicicleta #{b} en la base?",
+ bikeTaken:"Bici no disponible", bikeTakenTxt:"La bici #{b} fue tomada por {r}. Elegí otra.",
+ bikeBusy:"La bici #{b} está en uso. Elegí otra.",
+ restored:"Sesión recuperada", restoredTxt:"Seguís con la bici #{b}. Tu contador siguió corriendo.",
+ qrScanned:"Bici #{b} escaneada", qrScannedTxt:"Elegí cuánto tiempo la querés y seguimos con esa unidad.",
+ noContract:"Sin contrato", noContractTxt:"Todavía no completaste una reserva.",
+ pdfErr:"No se pudo generar", pdfErrTxt:"Probá de nuevo o revisá tu conexión.",
+ logoutConfirm:"Tenés un alquiler activo. ¿Cerrar sesión igual?",
+ gpsReal:"GPS Real ✓", gpsSim:"GPS Simulado", searching:"Buscando GPS...",
+ bookSlot:"📅 Reservar turno para otro día", slotTitle:"Pedido de reserva",
+ slotSub:"Elegí día y horario. Te confirmamos por WhatsApp.",
+ slotDate:"Fecha", slotBand:"Franja horaria", slotMorning:"Mañana · 9 a 13",
+ slotAfternoon:"Tarde · 13 a 17", slotEvening:"Atardecer · 17 a 21",
+ slotPlan:"Plan", slotTotal:"Total del alquiler", slotDeposit:"Seña a transferir (50%)",
+ slotRest:"Resto al retirar la bici", payTitle:"💳 Datos para la transferencia",
+ payAlias:"Alias", payCbu:"CBU", payHolder:"Titular", payCopy:"Copiar alias",
+ payCopied:"¡Alias copiado!", proofLabel:"Comprobante de transferencia",
+ proofDrop:"Subir captura del comprobante", proofSub:"Se envía junto al pedido",
+ sendReq:"📩 Enviar pedido de reserva", reqSent:"¡Pedido enviado!",
+ reqSentTxt:"Recibimos tu pedido. Te confirmamos la disponibilidad a la brevedad.",
+ reqPending:"Pedido pendiente de confirmación", reqPendingSub:"Estamos revisando tu transferencia",
+ reqConfirmed:"¡Turno confirmado!", reqRejected:"Pedido no confirmado",
+ reqCode:"Código del pedido", myRequest:"Mi pedido de reserva",
+ statusPending:"⏳ Pendiente", statusOk:"✅ Confirmado", statusNo:"❌ No confirmado",
+ cancelReq:"Cancelar pedido", confirmCancel:"¿Cancelar tu pedido de reserva?",
+ slotWarn:"⚠️ Tu turno queda reservado recién cuando confirmamos la transferencia.",
+ needProof:"Subí el comprobante de la transferencia para continuar.",
+ assignedBike:"Bicicleta asignada",
+ rentalActive:"Tenés un alquiler activo", rentalActiveTxt:"Tu bici #{b} sigue en curso. Si cerrás la app el contador se guarda igual."
+},
+en:{
+ tagline:"Mendoza foothills 🏔️", pickLang:"Choose your language / Elegí tu idioma",
+ yourName:"Your full name", namePh:"e.g. John Smith", enter:"Continue →",
+ privacyNote:"🔒 Your data is only used for this rental",
+ hello:"Hi", subHello:"The Andes foothills await", bikesAvail:"bikes available",
+ bikeSpec:"Hydraulic brakes · Helmets included", bookNow:"🚲 Book now",
+ activeRental:"Active Rental", timeLeft:"Time remaining", details:"View details",
+ rates:"💰 2026 Rates", perHour:"Per hour", popular:"⭐ Popular", fullDay:"Full day",
+ routes:"🗺️ Trails", seeAll:"See all →", logout:"Switch user / sign out",
+ back:"Back", newBooking:"New Booking", howLong:"How long do you want it?",
+ pickPlan:"Pick the plan for your ride", quickRide:"Quick ride", perHourUnit:"/ hour",
+ popularTag:"⭐ POPULAR", halfDay:"Half Day", halfDaySub:"4 hours of adventure",
+ fourHours:"4 hours", eightHours:"8 hours", pickBike:"Choose a bike →",
+ pickYourBike:"Choose your bike", bikeSpec2:"29er · Hydraulic brakes",
+ qrTip:"💡 You can also scan the QR code on the bike frame with your phone camera.",
+ continue:"Continue →", rentalContract:"Rental agreement", fillSign:"Fill in your details and sign",
+ docLabel:"Passport number", docPh:"e.g. L898902C3", phone:"Contact phone", phonePh:"e.g. +1 555 123 4567",
+ email:"Email", optional:"(optional)",
+ docPhotoLabel:"Passport photo page",
+ docDropT:"Take a photo of your passport", docDropS:"The data page with your photo",
+ retake:"🗑 Take another photo", terms:"📄 Rental terms",
+ acceptTerms:"I have read and accept the rental agreement",
+ acceptPromo:"I want to receive offers and news",
+ promoSub:"Optional. You can unsubscribe at any time.",
+ signHere:"✍️ Sign with your finger", clearSign:"🗑 Clear signature", reviewBooking:"Review booking →",
+ confirmBooking:"Confirm your booking", holder:"Renter", plan:"Plan", duration:"Duration",
+ pickup:"Pick-up", total:"Total",
+ signedNote:"✍️ Electronically signed agreement. You can download the PDF after confirming.",
+ payNote:"⚠️ Payment is made at the pick-up point. Helmet included at no charge.",
+ confirmBtn:"✅ Confirm Booking", bookingOk:"Booking confirmed!",
+ bikeReady:"Your bike is ready at the base 🎉", bookingCode:"Booking code",
+ bike:"Bike", downloadPdf:"📄 Download agreement PDF", startRental:"🚴 Start rental",
+ backHome:"Back to home", myRental:"My Rental", timeLeftUp:"⏱ Time remaining",
+ myLocation:"📡 My GPS location", screenOn:"🔆 Screen kept on so GPS keeps working",
+ routesBtn:"🗺️ Trails", contractBtn:"📄 Agreement", returnBike:"✅ Return bike",
+ sosBtn:"🆘 EMERGENCY / SOS", routeCatalog:"Trail Catalogue",
+ routeSub:"Verified circuits · Potrerillos", distance:"Distance", time:"Time",
+ elevation:"Elevation", description:"Description", seeMap:"▶ View on map",
+ howToGet:"📍 Get directions (Google Maps)", navHome:"Home", navBook:"Book",
+ navRoutes:"Trails", gotIt:"Got it", free:"✓ Free", inUse:"🔒 In use",
+ mrzLabel:"Machine-readable zone — second line (44 characters)",
+ scanBusy:"🔍 Reading the document...",
+ scanOkMatch:"✅ Document verified: the code matches the data you entered.",
+ scanMismatch:"⚠️ The code reads {x}, but you entered a different number. Please check.",
+ scanNoCode:"⚠️ Photo saved. For passports, type the machine-readable line below to verify it automatically.",
+ mrzOk:"✅ Passport verified: all check digits are correct.",
+ mrzBad:"⚠️ The check digits don't match. Please re-check the second line.",
+ mrzShort:"The second line has 44 characters. You typed {n}.",
+ sosSent:"SOS sent", sosTxt:"Your location was sent to the base ({c}). Stay where you are. For a medical emergency also call 911.",
+ pedal:"Enjoy the ride!", pedalTxt:"Your {d} countdown has started. Enjoy Potrerillos!",
+ timeUp:"Time is up", timeUpTxt:"Please return the bike to the base at the reservoir. Thank you!",
+ returned:"Bike returned", returnedTxt:"Thanks for choosing Potrerillos Bike Rental. See you soon!",
+ confirmReturn:"Confirm you are returning bike #{b} at the base?",
+ bikeTaken:"Bike unavailable", bikeTakenTxt:"Bike #{b} was just taken by {r}. Please pick another.",
+ bikeBusy:"Bike #{b} is in use. Please pick another.",
+ restored:"Session restored", restoredTxt:"You still have bike #{b}. Your countdown kept running.",
+ qrScanned:"Bike #{b} scanned", qrScannedTxt:"Choose how long you want it and we'll continue with that unit.",
+ noContract:"No agreement", noContractTxt:"You haven't completed a booking yet.",
+ pdfErr:"Could not generate", pdfErrTxt:"Please try again or check your connection.",
+ logoutConfirm:"You have an active rental. Sign out anyway?",
+ gpsReal:"GPS Live ✓", gpsSim:"GPS Simulated", searching:"Searching GPS...",
+ bookSlot:"📅 Book a slot for another day", slotTitle:"Booking request",
+ slotSub:"Pick a date and time. We'll confirm by WhatsApp.",
+ slotDate:"Date", slotBand:"Time slot", slotMorning:"Morning · 9 to 13",
+ slotAfternoon:"Afternoon · 13 to 17", slotEvening:"Evening · 17 to 21",
+ slotPlan:"Plan", slotTotal:"Rental total", slotDeposit:"Deposit to transfer (50%)",
+ slotRest:"Balance on pick-up", payTitle:"💳 Bank transfer details",
+ payAlias:"Alias", payCbu:"CBU", payHolder:"Account holder", payCopy:"Copy alias",
+ payCopied:"Alias copied!", proofLabel:"Transfer receipt",
+ proofDrop:"Upload a screenshot of the receipt", proofSub:"Sent along with your request",
+ sendReq:"📩 Send booking request", reqSent:"Request sent!",
+ reqSentTxt:"We got your request. We'll confirm availability shortly.",
+ reqPending:"Request awaiting confirmation", reqPendingSub:"We're checking your transfer",
+ reqConfirmed:"Slot confirmed!", reqRejected:"Request not confirmed",
+ reqCode:"Request code", myRequest:"My booking request",
+ statusPending:"⏳ Pending", statusOk:"✅ Confirmed", statusNo:"❌ Not confirmed",
+ cancelReq:"Cancel request", confirmCancel:"Cancel your booking request?",
+ slotWarn:"⚠️ Your slot is only held once we confirm the transfer.",
+ needProof:"Please upload the transfer receipt to continue.",
+ assignedBike:"Assigned bike",
+ rentalActive:"You have an active rental", rentalActiveTxt:"Bike #{b} is still running. Closing the app won't stop the countdown."
+},
+pt:{
+ tagline:"Pré-cordilheira de Mendoza 🏔️", pickLang:"Escolha seu idioma / Choose your language",
+ yourName:"Seu nome completo", namePh:"Ex: João Silva", enter:"Entrar →",
+ privacyNote:"🔒 Seus dados são usados apenas para esta locação",
+ hello:"Olá", subHello:"A pré-cordilheira espera por você", bikesAvail:"bikes disponíveis",
+ bikeSpec:"Freios hidráulicos · Capacetes inclusos", bookNow:"🚲 Reservar agora",
+ activeRental:"Locação Ativa", timeLeft:"Tempo restante", details:"Ver detalhes",
+ rates:"💰 Tarifas 2026", perHour:"Por hora", popular:"⭐ Popular", fullDay:"Dia inteiro",
+ routes:"🗺️ Trilhas", seeAll:"Ver todas →", logout:"Trocar de usuário / sair",
+ back:"Voltar", newBooking:"Nova Reserva", howLong:"Por quanto tempo você quer?",
+ pickPlan:"Escolha o plano para sua aventura", quickRide:"Passeio rápido", perHourUnit:"/ hora",
+ popularTag:"⭐ POPULAR", halfDay:"Meio Dia", halfDaySub:"4 horas de aventura",
+ fourHours:"4 horas", eightHours:"8 horas", pickBike:"Escolher bicicleta →",
+ pickYourBike:"Escolha sua bicicleta", bikeSpec2:"Aro 29 · Freios hidráulicos",
+ qrTip:"💡 Você também pode escanear o QR colado no quadro da bike com a câmera do celular.",
+ continue:"Continuar →", rentalContract:"Contrato de locação", fillSign:"Preencha seus dados e assine",
+ docLabel:"Número do passaporte", docPh:"Ex: FX123456", phone:"Telefone de contato", phonePh:"Ex: +55 11 91234-5678",
+ email:"Email", optional:"(opcional)",
+ docPhotoLabel:"Foto da página de dados do passaporte",
+ docDropT:"Tirar foto do passaporte", docDropS:"A página com sua foto e seus dados",
+ retake:"🗑 Tirar outra foto", terms:"📄 Termos da locação",
+ acceptTerms:"Li e aceito os termos do contrato de locação",
+ acceptPromo:"Quero receber promoções e novidades",
+ promoSub:"Opcional. Você pode cancelar quando quiser.",
+ signHere:"✍️ Assine com o dedo", clearSign:"🗑 Apagar assinatura", reviewBooking:"Revisar reserva →",
+ confirmBooking:"Confirme sua reserva", holder:"Titular", plan:"Plano", duration:"Duração",
+ pickup:"Retirada", total:"Total",
+ signedNote:"✍️ Contrato assinado eletronicamente. Você poderá baixar o PDF ao confirmar.",
+ payNote:"⚠️ O pagamento é feito no ponto de retirada. Capacete incluso sem custo.",
+ confirmBtn:"✅ Confirmar Reserva", bookingOk:"Reserva confirmada!",
+ bikeReady:"Sua bike está pronta na base 🎉", bookingCode:"Código da reserva",
+ bike:"Bicicleta", downloadPdf:"📄 Baixar contrato em PDF", startRental:"🚴 Iniciar locação",
+ backHome:"Voltar ao início", myRental:"Minha Locação", timeLeftUp:"⏱ Tempo restante",
+ myLocation:"📡 Minha localização GPS", screenOn:"🔆 Tela ativa para não perder o GPS",
+ routesBtn:"🗺️ Trilhas", contractBtn:"📄 Contrato", returnBike:"✅ Devolver bicicleta",
+ sosBtn:"🆘 EMERGÊNCIA / SOS", routeCatalog:"Catálogo de Trilhas",
+ routeSub:"Circuitos verificados · Potrerillos", distance:"Distância", time:"Tempo",
+ elevation:"Desnível", description:"Descrição", seeMap:"▶ Ver no mapa",
+ howToGet:"📍 Como chegar (Google Maps)", navHome:"Início", navBook:"Reservar",
+ navRoutes:"Trilhas", gotIt:"Entendi", free:"✓ Livre", inUse:"🔒 Em uso",
+ mrzLabel:"Zona legível por máquina — segunda linha (44 caracteres)",
+ scanBusy:"🔍 Lendo o documento...",
+ scanOkMatch:"✅ Documento verificado: o código confere com os dados informados.",
+ scanMismatch:"⚠️ O código indica {x}, mas você digitou outro número. Verifique o dado.",
+ scanNoCode:"⚠️ Foto salva. Para passaporte, digite a linha legível por máquina abaixo para verificar automaticamente.",
+ mrzOk:"✅ Passaporte verificado: os dígitos de controle estão corretos.",
+ mrzBad:"⚠️ Os dígitos de controle não conferem. Revise a segunda linha.",
+ mrzShort:"A segunda linha tem 44 caracteres. Você digitou {n}.",
+ sosSent:"SOS enviado", sosTxt:"Localização enviada à base ({c}). Permaneça no local. Em emergência médica ligue 911.",
+ pedal:"Boa pedalada!", pedalTxt:"Sua contagem de {d} já começou. Aproveite Potrerillos!",
+ timeUp:"Tempo esgotado", timeUpTxt:"Devolva a bicicleta na base do Dique. Obrigado!",
+ returned:"Bicicleta devolvida", returnedTxt:"Obrigado por escolher Potrerillos Bike Rental. Volte sempre!",
+ confirmReturn:"Confirma a devolução da bicicleta #{b} na base?",
+ bikeTaken:"Bike indisponível", bikeTakenTxt:"A bike #{b} acabou de ser alugada por {r}. Escolha outra.",
+ bikeBusy:"A bike #{b} está em uso. Escolha outra.",
+ restored:"Sessão recuperada", restoredTxt:"Você continua com a bike #{b}. Sua contagem seguiu correndo.",
+ qrScanned:"Bike #{b} escaneada", qrScannedTxt:"Escolha por quanto tempo e seguimos com essa unidade.",
+ noContract:"Sem contrato", noContractTxt:"Você ainda não concluiu uma reserva.",
+ pdfErr:"Não foi possível gerar", pdfErrTxt:"Tente novamente ou verifique sua conexão.",
+ logoutConfirm:"Você tem uma locação ativa. Sair mesmo assim?",
+ gpsReal:"GPS Real ✓", gpsSim:"GPS Simulado", searching:"Buscando GPS...",
+ bookSlot:"📅 Reservar horário para outro dia", slotTitle:"Pedido de reserva",
+ slotSub:"Escolha dia e horário. Confirmamos por WhatsApp.",
+ slotDate:"Data", slotBand:"Faixa de horário", slotMorning:"Manhã · 9 às 13",
+ slotAfternoon:"Tarde · 13 às 17", slotEvening:"Fim de tarde · 17 às 21",
+ slotPlan:"Plano", slotTotal:"Total da locação", slotDeposit:"Sinal a transferir (50%)",
+ slotRest:"Restante na retirada", payTitle:"💳 Dados para a transferência",
+ payAlias:"Alias", payCbu:"CBU", payHolder:"Titular", payCopy:"Copiar alias",
+ payCopied:"Alias copiado!", proofLabel:"Comprovante da transferência",
+ proofDrop:"Enviar print do comprovante", proofSub:"Vai junto com o pedido",
+ sendReq:"📩 Enviar pedido de reserva", reqSent:"Pedido enviado!",
+ reqSentTxt:"Recebemos seu pedido. Confirmamos a disponibilidade em breve.",
+ reqPending:"Pedido aguardando confirmação", reqPendingSub:"Estamos conferindo sua transferência",
+ reqConfirmed:"Horário confirmado!", reqRejected:"Pedido não confirmado",
+ reqCode:"Código do pedido", myRequest:"Meu pedido de reserva",
+ statusPending:"⏳ Pendente", statusOk:"✅ Confirmado", statusNo:"❌ Não confirmado",
+ cancelReq:"Cancelar pedido", confirmCancel:"Cancelar seu pedido de reserva?",
+ slotWarn:"⚠️ Seu horário só fica reservado quando confirmamos a transferência.",
+ needProof:"Envie o comprovante da transferência para continuar.",
+ assignedBike:"Bicicleta atribuída",
+ rentalActive:"Você tem uma locação ativa", rentalActiveTxt:"A bike #{b} continua ativa. Fechar o app não para a contagem."
+}};
+function t(k,vars){
+  var s = (T[LANG] && T[LANG][k]) || (T.es[k]) || k;
+  if(vars) Object.keys(vars).forEach(function(v){ s = s.split("{"+v+"}").join(vars[v]); });
+  return s;
+}
+
+var CONTRATO = {
+es:[
+ ["1. Objeto","POTRERILLOS BIKE RENTAL entrega en alquiler una bicicleta de montaña Rodado 29 con casco de seguridad, en el estado de conservación que el locatario declara verificar y aceptar al momento del retiro."],
+ ["2. Uso y obligaciones","El locatario se obliga a: usar el casco de manera permanente durante la circulación; respetar las normas de tránsito y la señalización de los senderos; no ceder ni subarrendar la bicicleta a terceros; no circular bajo efectos de alcohol o estupefacientes; y restituir la unidad en el plazo pactado en la base operativa."],
+ ["3. Aptitud y riesgos","El locatario declara saber conducir bicicleta, encontrarse en condiciones psicofísicas adecuadas y conocer que el ciclismo de montaña conlleva riesgos propios derivados del terreno natural, las condiciones climáticas y su propia impericia. Asume dichos riesgos de manera informada y voluntaria."],
+ ["4. Responsabilidad por la unidad","El locatario responde por los daños, roturas, pérdida o hurto de la bicicleta y el equipamiento entregado, ocurridos durante la vigencia del alquiler por causas que le sean imputables. La demora en la restitución genera el cargo de la tarifa horaria vigente por cada hora o fracción."],
+ ["5. Alcance de la responsabilidad del locador","El locador entrega la unidad en condiciones de uso y mantiene a su cargo el mantenimiento preventivo de la flota. Conforme al artículo 1743 del Código Civil y Comercial de la Nación, ninguna cláusula del presente exime al locador de responder por daños que afecten derechos indisponibles, ni por su dolo o el de sus dependientes. El presente no constituye renuncia del locatario a los derechos que le reconoce la Ley 24.240 de Defensa del Consumidor."],
+ ["6. Emergencias","El locatario cuenta con el botón S.O.S. de la aplicación, que transmite su ubicación a la base operativa. Ante una emergencia médica debe comunicarse además con el 911 o el servicio de emergencias local."],
+ ["7. Identidad","El locatario declara bajo juramento que los datos consignados son veraces y que la imagen del documento aportada corresponde a su identidad, autorizando su conservación al solo efecto de acreditar la contratación."],
+ ["8. Datos personales","Los datos se tratan conforme a la Ley 25.326. El titular puede solicitar en cualquier momento el acceso, rectificación o supresión de sus datos."]
+],
+en:[
+ ["1. Subject","POTRERILLOS BIKE RENTAL rents out a 29er mountain bike with a safety helmet, in the condition the renter declares to have inspected and accepted at pick-up."],
+ ["2. Use and obligations","The renter undertakes to: wear the helmet at all times while riding; comply with traffic rules and trail signage; not lend or sublet the bike to third parties; not ride under the influence of alcohol or drugs; and return the unit within the agreed period at the operating base."],
+ ["3. Fitness and risks","The renter declares being able to ride a bicycle, being in adequate physical condition, and understanding that mountain biking entails risks inherent to natural terrain, weather conditions and the rider's own skill level. These risks are assumed knowingly and voluntarily."],
+ ["4. Liability for the unit","The renter is liable for damage, breakage, loss or theft of the bike and equipment occurring during the rental period for causes attributable to them. Late return is charged at the current hourly rate per hour or fraction thereof."],
+ ["5. Scope of the company's liability","The company delivers the unit in working condition and is responsible for preventive maintenance of the fleet. Under article 1743 of the Argentine Civil and Commercial Code, no clause herein releases the company from liability for harm affecting non-waivable rights, nor for its own wilful misconduct or that of its staff. This agreement does not waive the renter's rights under Consumer Protection Act 24.240."],
+ ["6. Emergencies","The renter has the in-app S.O.S. button, which transmits their location to the operating base. In a medical emergency they must also call 911 or the local emergency service."],
+ ["7. Identity","The renter declares under oath that the data provided is truthful and that the document image supplied corresponds to their identity, authorising its retention solely to evidence this agreement."],
+ ["8. Personal data","Data is processed under Argentine Act 25.326. The data subject may request access, rectification or erasure at any time."]
+],
+pt:[
+ ["1. Objeto","POTRERILLOS BIKE RENTAL entrega em locação uma bicicleta de montanha aro 29 com capacete de segurança, no estado de conservação que o locatário declara verificar e aceitar no momento da retirada."],
+ ["2. Uso e obrigações","O locatário obriga-se a: usar o capacete de forma permanente durante a circulação; respeitar as normas de trânsito e a sinalização das trilhas; não ceder nem sublocar a bicicleta a terceiros; não circular sob efeito de álcool ou entorpecentes; e restituir a unidade no prazo pactuado na base operacional."],
+ ["3. Aptidão e riscos","O locatário declara saber conduzir bicicleta, encontrar-se em condições psicofísicas adequadas e conhecer que o ciclismo de montanha acarreta riscos próprios decorrentes do terreno natural, das condições climáticas e de sua própria imperícia. Assume tais riscos de maneira informada e voluntária."],
+ ["4. Responsabilidade pela unidade","O locatário responde pelos danos, quebras, perda ou furto da bicicleta e do equipamento entregue, ocorridos durante a vigência da locação por causas que lhe sejam imputáveis. O atraso na devolução gera a cobrança da tarifa horária vigente por hora ou fração."],
+ ["5. Alcance da responsabilidade do locador","O locador entrega a unidade em condições de uso e mantém a seu cargo a manutenção preventiva da frota. Conforme o artigo 1743 do Código Civil e Comercial da Nação Argentina, nenhuma cláusula deste contrato exime o locador de responder por danos que afetem direitos indisponíveis, nem por seu dolo ou de seus prepostos. O presente não constitui renúncia aos direitos reconhecidos pela Lei 24.240 de Defesa do Consumidor."],
+ ["6. Emergências","O locatário conta com o botão S.O.S. do aplicativo, que transmite sua localização à base operacional. Em caso de emergência médica deve comunicar-se também com o 911 ou o serviço de emergências local."],
+ ["7. Identidade","O locatário declara sob juramento que os dados informados são verídicos e que a imagem do documento apresentada corresponde à sua identidade, autorizando sua conservação para o único efeito de comprovar a contratação."],
+ ["8. Dados pessoais","Os dados são tratados conforme a Lei argentina 25.326. O titular pode solicitar a qualquer momento o acesso, retificação ou supressão de seus dados."]
+]};
+
+function aplicarIdioma(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll("[data-i]").forEach(function(el){
+    var k = el.getAttribute("data-i");
+    var v = T[LANG][k];
+    if(v===undefined) return;
+    // Preservar spans internos en los casos especiales
+    if(k==="acceptTerms"){ el.innerHTML = v + " <span style='color:#ef4444;'>*</span>"; return; }
+    if(k==="acceptPromo"){ el.innerHTML = v + "<br><span style='font-size:10px;color:#64748b;font-weight:400;'>"+T[LANG].promoSub+"</span>"; return; }
+    el.textContent = v;
+  });
+  document.querySelectorAll("[data-ph]").forEach(function(el){
+    var k = el.getAttribute("data-ph");
+    if(T[LANG][k]!==undefined) el.placeholder = T[LANG][k];
+  });
+  var ld=document.getElementById("lbl-doc"); if(ld) ld.textContent = T[LANG].docLabel;
+  var lp=document.getElementById("lbl-docphoto");
+  if(lp) lp.innerHTML = T[LANG].docPhotoLabel + " <span style='color:#ef4444;'>*</span>";
+  var dt=document.getElementById("doc-drop-t"); if(dt) dt.textContent = T[LANG].docDropT;
+  var ds=document.getElementById("doc-drop-s"); if(ds) ds.textContent = T[LANG].docDropS;
+  var lc=document.getElementById("lang-chip"); if(lc) lc.textContent = LANG.toUpperCase();
+  ["es","en","pt"].forEach(function(l){
+    var b=document.getElementById("lb-"+l); if(b) b.classList.toggle("sel", LANG===l);
+  });
+  document.getElementById("mrz-box").style.display = (LANG==="es") ? "none" : "block";
+  renderContrato();
+  renderRutasHome(); renderTodasRutas();
+}
+function setLang(l){ LANG=l; try{ localStorage.setItem("pbr-lang",l); }catch(e){} aplicarIdioma(); }
+function toggleLang(){ var o=["es","en","pt"]; setLang(o[(o.indexOf(LANG)+1)%3]); }
+
+function renderContrato(){
+  var box=document.getElementById("contract-text"); if(!box) return;
+  box.innerHTML = CONTRATO[LANG].map(function(c){
+    return "<h4>"+c[0]+"</h4>"+c[1];
+  }).join("");
+}
+
+// ═══════════════ DATOS ═══════════════
+var BIKES=[{id:"01"},{id:"02"},{id:"03"},{id:"04"},{id:"05"},{id:"06"}];
+var ROUTES=[
+ {id:1,color:"#22c55e",mapQ:"-32.956381,-69.197775",dist:"15 km",dur:{es:"1.5 hs",en:"1.5 h",pt:"1,5 h"},elev:"120m",
+  name:{es:"Circuito del Perilago",en:"Reservoir Loop",pt:"Circuito da Represa"},diff:{es:"Fácil",en:"Easy",pt:"Fácil"},
+  desc:{es:"Ideal para principiantes y familias. Bordea el dique con vistas espectaculares. Terreno de ripio consolidado, sin grandes desniveles.",
+        en:"Perfect for beginners and families. Follows the reservoir shore with spectacular views. Packed gravel, no steep climbs.",
+        pt:"Ideal para iniciantes e famílias. Contorna a represa com vistas espetaculares. Terreno de cascalho compactado, sem grandes desníveis."}},
+ {id:2,color:"#eab308",mapQ:"-32.946358,-69.155702",dist:"22 km",dur:{es:"2.5 hs",en:"2.5 h",pt:"2,5 h"},elev:"450m",
+  name:{es:"Mirador Cerro Cocodrilo",en:"Crocodile Hill Lookout",pt:"Mirante Cerro Cocodrilo"},diff:{es:"Moderado",en:"Moderate",pt:"Moderado"},
+  desc:{es:"Desafío intermedio hacia el Cerro Cocodrilo. Vistas 360° desde la cumbre. Requiere dominio de frenos en el descenso.",
+        en:"Intermediate challenge up to Crocodile Hill. 360° views from the top. Good braking control needed on the descent.",
+        pt:"Desafio intermediário até o Cerro Cocodrilo. Vistas 360° do topo. Exige domínio dos freios na descida."}},
+ {id:3,color:"#ef4444",mapQ:"-33.023241,-69.114771",dist:"35 km",dur:{es:"4 hs",en:"4 h",pt:"4 h"},elev:"980m",
+  name:{es:"Travesía Cacheuta",en:"Cacheuta Traverse",pt:"Travessia Cacheuta"},diff:{es:"Difícil",en:"Hard",pt:"Difícil"},
+  desc:{es:"Solo para ciclistas experimentados. Senderos técnicos, rocas sueltas y descensos tipo Enduro.",
+        en:"Experienced riders only. Technical singletrack, loose rock and enduro-style descents.",
+        pt:"Apenas para ciclistas experientes. Trilhas técnicas, pedras soltas e descidas estilo Enduro."}}
+];
+var BASE={lat:-32.9565,lng:-69.1978};
+// ─── Datos bancarios: EDITAR con los reales del emprendimiento ───
+var PAGO={ alias:"POTRERILLOS.BIKE.MZA", cbu:"0000003100098765432101",
+           titular:"Potrerillos Bike Rental", banco:"Mercado Pago", whatsapp:"+54 9 261 555-1234" };
+var TARIFAS={hour:4000,half:14000,day:24000};
+
+// ═══════════════ ESTADO ═══════════════
+var userName="", myBikeId=null, bkCnt=0, curScreen="login";
+var bkType=null,bkH=null,bkBike=null,bkPrice=null,bkDur=null,selHrs=null;
+var timerIv=null, remainSec=0;
+var gpsPos=null,gpsWatchId=null,gpsSimIv=null;
+var miniMap=null,miniMkr=null,selRoute=null;
+var wakeLock=null, sigCtx=null, sigDibujada=false;
+var chkContrato=false, chkMarketing=false, contratoData=null, qrBike=null;
+var fotoDoc=null, docVerificado=false, docLeido=null, mrzOk=false;
+var docEstado="ambar";  // verde | ambar | rojo
+var SKEY="pbr-sesion-v9";
+var bikeStates={}; BIKES.forEach(function(b){ bikeStates[b.id]={status:"available",renter:null}; });
+
+// ═══════════════ PERSISTENCIA ═══════════════
+function val(id){ var e=document.getElementById(id); return e?e.value.trim():""; }
+function guardarSesion(){
+  try{
+    localStorage.setItem(SKEY, JSON.stringify({
+      lang:LANG, nombre:userName, dni:val("in-dni"), tel:val("in-tel"), mail:val("in-mail"),
+      contrato:contratoData,
+      alquiler: myBikeId ? {bici:myBikeId,endTs:Date.now()+remainSec*1000,plan:bkType,dur:bkDur,precio:bkPrice,horas:bkH} : null
+    }));
+  }catch(e){}
+}
+function leerSesion(){ try{ var r=localStorage.getItem(SKEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function borrarAlquilerGuardado(){ var s=leerSesion(); if(!s) return; s.alquiler=null; try{ localStorage.setItem(SKEY,JSON.stringify(s)); }catch(e){} }
+function cerrarSesion(){
+  if(myBikeId && !confirm(t("logoutConfirm"))) return;
+  try{ localStorage.removeItem(SKEY); }catch(e){}
+  location.reload();
+}
+function restaurarSesion(){
+  var s=leerSesion(); if(!s||!s.nombre) return false;
+  if(s.lang){ LANG=s.lang; aplicarIdioma(); }
+  userName=s.nombre; contratoData=s.contrato||null;
+  if(contratoData && contratoData.docfoto) fotoDoc=contratoData.docfoto;
+  setText("gr-name",userName);
+  var av=document.getElementById("avatar");
+  if(av) av.src="https://ui-avatars.com/api/?name="+encodeURIComponent(userName)+"&background=0d9488&color=fff&size=64";
+  if(s.dni) document.getElementById("in-dni").value=s.dni;
+  if(s.tel) document.getElementById("in-tel").value=s.tel;
+  if(s.mail) document.getElementById("in-mail").value=s.mail;
+  document.getElementById("sc-login").style.display="none";
+  document.getElementById("nav").style.display="flex";
+  miPedido=leerPedido();
+  go("home"); iniciarGPS(); initMQTT(); pushHist(); renderPedido();
+  if(s.alquiler && s.alquiler.endTs>Date.now()){
+    var a=s.alquiler;
+    myBikeId=a.bici; bkType=a.plan; bkDur=a.dur; bkPrice=a.precio; bkH=a.horas;
+    remainSec=Math.floor((a.endTs-Date.now())/1000);
+    bikeStates[myBikeId]={status:"active",renter:userName};
+    document.getElementById("c-avail").style.display="none";
+    document.getElementById("c-active").style.display="block";
+    setText("h-bike","Rodado 29 — #"+myBikeId);
+    setText("a-type",planName(bkType)+" · "+bkDur);
+    pedirWakeLock();
+    if(timerIv) clearInterval(timerIv);
+    timerIv=setInterval(tickTimer,1000); tickTimer();
+    actualizarContadorLibres();
+    setTimeout(function(){ showModal("🔄",t("restored"),t("restoredTxt",{b:myBikeId}),"#0d9488"); },600);
+  } else if(s.alquiler){ borrarAlquilerGuardado(); }
+  return true;
+}
+function planName(p){
+  var M={es:{hour:"Por hora",half:"Medio Día",day:"Día Completo"},
+         en:{hour:"Per hour",half:"Half Day",day:"Full Day"},
+         pt:{hour:"Por hora",half:"Meio Dia",day:"Dia Inteiro"}};
+  return (M[LANG]||M.es)[p]||"";
+}
+
+// ═══════════════ BOTÓN ATRÁS ═══════════════
+function pushHist(){ try{ history.pushState({app:1},"",""); }catch(e){} }
+window.addEventListener("popstate", function(){
+  if(curScreen==="booking"){
+    var pasos=["bk-1","bk-2","bk-3","bk-4","bk-ok"];
+    var act=pasos.filter(function(id){ var e=document.getElementById(id); return e&&e.style.display!=="none"; })[0];
+    if(act&&act!=="bk-1"){ bookBack(); pushHist(); return; }
+    go("home"); pushHist(); return;
+  }
+  if(curScreen==="rdet"){ go("routes"); pushHist(); return; }
+  if(curScreen==="gpsmap"){ go("rdet"); pushHist(); return; }
+  if(curScreen!=="home"){ go("home"); pushHist(); return; }
+  if(myBikeId){ showModal("🚴",t("rentalActive"),t("rentalActiveTxt",{b:myBikeId}),"#0d9488"); pushHist(); return; }
+  pushHist();
+});
+
+// ═══════════════ MQTT ═══════════════
+var mqttClient=null;
+var MY_ID="pbr-"+Math.random().toString(16).slice(2,8);
+var TOPIC="pbr/potrerillos/grp-zapata-romero-terraza/2026/v1";
+function initMQTT(){
+  var s=document.createElement("script");
+  s.src="https://unpkg.com/mqtt@5.3.4/dist/mqtt.min.js";
+  s.onload=conectarMQTT; document.head.appendChild(s);
+}
+function conectarMQTT(){
+  mqttClient=mqtt.connect("wss://broker.hivemq.com:8884/mqtt",{clientId:MY_ID,clean:true,connectTimeout:5000,reconnectPeriod:3000});
+  mqttClient.on("connect",function(){
+    mqttClient.subscribe(TOPIC);
+    setModeUI(LANG==="en"?"LIVE":LANG==="pt"?"AO VIVO":"EN VIVO","#22c55e");
+    enviar("REQUEST_STATE",{from:MY_ID});
+  });
+  mqttClient.on("message",function(tp,msg){
+    try{ var m=JSON.parse(msg.toString()); if(m.sender===MY_ID) return; procesarEvento(m.type,m.data); }catch(e){}
+  });
+  mqttClient.on("error",    function(){ setModeUI("offline","#ef4444"); });
+  mqttClient.on("reconnect",function(){ setModeUI("...","#f59e0b"); });
+}
+function enviar(type,data){
+  if(!mqttClient||!mqttClient.connected) return;
+  mqttClient.publish(TOPIC,JSON.stringify({type:type,data:data,sender:MY_ID,ts:Date.now()}));
+}
+function setModeUI(x,c){ var e=document.getElementById("sb-mode"); if(e){e.textContent=x;e.style.color=c;} }
+
+function procesarEvento(type,data){
+  if(type==="REQUEST_CLIENT_STATE"){
+    if(myBikeId){
+      enviar("CLIENT_STATE",{id:myBikeId,renter:userName,remain:remainSec,
+        code:contratoData?contratoData.code:"",price:bkPrice||0,
+        lat:gpsPos?gpsPos.lat:null,lng:gpsPos?gpsPos.lng:null,
+        dni:contratoData?contratoData.dni:"",tel:contratoData?contratoData.tel:"",
+        mail:contratoData?contratoData.mail:"",marketing:contratoData?contratoData.marketing:false,
+        plan:bkType||"",duracion:bkDur||""});
+      setTimeout(enviarContratoACentral,900);
+    }
+    return;
+  }
+  if(type==="STATE_SYNC" && data && data.bikes){
+    Object.keys(data.bikes).forEach(function(id){
+      if(!bikeStates[id]||id===myBikeId) return;
+      bikeStates[id]={status:data.bikes[id].status,renter:data.bikes[id].renter};
+      actualizarChip(id);
+    });
+    actualizarContadorLibres(); return;
+  }
+  if(type==="BOOKING_CONFIRM" && miPedido && data.reqId===miPedido.reqId){
+    miPedido.estado="confirmado"; miPedido.bici=data.bici||null;
+    guardarPedido(); renderPedido();
+    showModal("✅",t("reqConfirmed"),
+      miPedido.franjaTxt+" · "+miPedido.planTxt+(data.bici?(" · "+t("assignedBike")+" #"+data.bici):""),"#0d9488");
+    return;
+  }
+  if(type==="BOOKING_REJECT" && miPedido && data.reqId===miPedido.reqId){
+    miPedido.estado="rechazado"; miPedido.motivo=data.motivo||"";
+    guardarPedido(); renderPedido();
+    showModal("❌",t("reqRejected"),data.motivo||"","#ef4444");
+    return;
+  }
+  if(type==="REQUEST_BOOKINGS" && miPedido && miPedido.estado==="pendiente"){
+    setTimeout(function(){ enviar("BOOKING_REQUEST",miPedido); },700);
+    return;
+  }
+  var id=data&&data.id; if(!id) return;
+  if(type==="RENTAL_START"){
+    if(id===myBikeId) return;
+    bikeStates[id]={status:"active",renter:data.renter||"?"};
+    actualizarChip(id);
+    if(bkBike===id){ bkBike=null; disB("bt3"); disB("bt4");
+      showModal("⚠️",t("bikeTaken"),t("bikeTakenTxt",{b:id,r:data.renter||"—"}),"#f59e0b"); }
+  } else if(type==="END"||type==="FORCE_RELEASE"){
+    if(id===myBikeId && type==="FORCE_RELEASE"){ terminarAlquilerLocal(false);
+      showModal("ℹ️",t("returned"),t("returnedTxt"),"#0d9488"); }
+    bikeStates[id]={status:"available",renter:null};
+    actualizarChip(id);
+  }
+  actualizarContadorLibres();
+}
+function actualizarContadorLibres(){
+  var n=0; BIKES.forEach(function(b){ if(bikeStates[b.id].status==="available") n++; });
+  setText("cnt-libres",n);
+}
+function actualizarChip(id){
+  var chip=document.getElementById("bkc-"+id); if(!chip) return;
+  var oc=bikeStates[id].status!=="available";
+  chip.style.opacity=oc?"0.45":"1";
+  chip.style.cursor=oc?"not-allowed":"pointer";
+  chip.style.background=oc?"#f8fafc":"white";
+  var st=chip.querySelector(".chip-status");
+  if(st){ st.textContent=oc?t("inUse"):t("free"); st.style.color=oc?"#94a3b8":"#16a34a"; }
+  if(oc&&bkBike===id){ bkBike=null; chip.classList.remove("sel"); disB("bt3"); }
+}
+
+// ═══════════════ WAKE LOCK ═══════════════
+function pedirWakeLock(){
+  if(!("wakeLock" in navigator)) return;
+  navigator.wakeLock.request("screen").then(function(wl){
+    wakeLock=wl;
+    var n=document.getElementById("wl-note"); if(n) n.style.display="block";
+    setText("sb-wl","🔆");
+    wl.addEventListener("release",function(){ wakeLock=null; });
+  }).catch(function(){});
+}
+function soltarWakeLock(){
+  if(wakeLock){ wakeLock.release().catch(function(){}); wakeLock=null; }
+  var n=document.getElementById("wl-note"); if(n) n.style.display="none";
+  setText("sb-wl","");
+}
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState==="visible"&&myBikeId&&!wakeLock) pedirWakeLock();
+});
+
+// ═══════════════ GPS ═══════════════
+function iniciarGPS(){
+  if(navigator.geolocation){
+    gpsWatchId=navigator.geolocation.watchPosition(
+      function(p){ gpsPos={lat:p.coords.latitude,lng:p.coords.longitude,real:true};
+        setGPSUI(true,t("gpsReal")); actualizarMiniMapa();
+        if(myBikeId) enviar("GPS",{id:myBikeId,lat:gpsPos.lat,lng:gpsPos.lng,remain:remainSec}); },
+      function(){ iniciarGPSSim(); },
+      {enableHighAccuracy:true,maximumAge:5000,timeout:10000});
+  } else iniciarGPSSim();
+}
+function iniciarGPSSim(){
+  gpsPos={lat:BASE.lat+(Math.random()-.5)*.003,lng:BASE.lng+(Math.random()-.5)*.003,real:false};
+  setGPSUI(false,t("gpsSim"));
+  gpsSimIv=setInterval(function(){
+    gpsPos.lat+=(Math.random()-.5)*.0003; gpsPos.lng+=(Math.random()-.5)*.0003;
+    actualizarMiniMapa();
+    if(myBikeId) enviar("GPS",{id:myBikeId,lat:gpsPos.lat,lng:gpsPos.lng,remain:remainSec});
+  },5000);
+}
+function setGPSUI(real,label){
+  var d=document.getElementById("gdot"); if(d) d.className="gdot "+(real?"on":"sim");
+  setText("glbl",label);
+}
+function iniciarMiniMapa(){
+  if(miniMap) return;
+  var lat=gpsPos?gpsPos.lat:BASE.lat, lng=gpsPos?gpsPos.lng:BASE.lng;
+  miniMap=L.map("mini-map",{zoomControl:false,attributionControl:false}).setView([lat,lng],15);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19}).addTo(miniMap);
+  miniMkr=L.marker([lat,lng],{icon:L.divIcon({
+    html:"<div style='background:#0d9488;border:2px solid white;border-radius:50%;width:14px;height:14px;box-shadow:0 2px 8px rgba(13,148,136,.6);'></div>",
+    iconAnchor:[7,7],className:""})}).addTo(miniMap);
+}
+function actualizarMiniMapa(){
+  if(!miniMap||!gpsPos) return;
+  miniMkr.setLatLng([gpsPos.lat,gpsPos.lng]); miniMap.panTo([gpsPos.lat,gpsPos.lng]);
+  setText("a-coords",gpsPos.lat.toFixed(5)+", "+gpsPos.lng.toFixed(5));
+  setText("a-gst",gpsPos.real?"● GPS":"~ "+(LANG==="en"?"Simulated":LANG==="pt"?"Simulado":"Simulado"));
+}
+
+// ═══════════════ NAVEGACIÓN ═══════════════
+function go(sc){
+  ["login","home","booking","routes","rdet","active","gpsmap","turno"].forEach(function(s){
+    var el=document.getElementById("sc-"+s); if(el) el.style.display="none"; });
+  var el=document.getElementById("sc-"+sc); if(!el) return;
+  el.style.display=(sc==="gpsmap")?"flex":"block";
+  curScreen=sc;
+  var nav=document.getElementById("nav");
+  if(nav) nav.style.display=(sc==="login"||sc==="gpsmap")?"none":"flex";
+  ["home","booking","routes"].forEach(function(n){
+    var b=document.getElementById("nb-"+n); if(b) b.className="nbt"+(n===sc?" on":""); });
+  if(sc==="active"){
+    setText("a-timer",document.getElementById("h-timer").textContent);
+    setText("a-bike",document.getElementById("h-bike").textContent);
+    setTimeout(function(){ iniciarMiniMapa(); if(miniMap) miniMap.invalidateSize(); actualizarMiniMapa(); },120);
+  }
+  if(sc==="gpsmap"&&selRoute){
+    setText("gm-t",selRoute.name[LANG]);
+    var f=document.getElementById("gm-f"); if(f) f.src="https://maps.google.com/maps?q="+selRoute.mapQ+"&t=p&z=14&output=embed";
+  }
+  if(sc==="booking") resetBk();
+  if(sc==="home"){ renderRutasHome(); actualizarContadorLibres(); renderPedido(); }
+  if(sc==="turno") initTurno();
+  if(sc==="routes") renderTodasRutas();
+}
+
+function doLogin(){
+  var v=document.getElementById("name-inp").value.trim();
+  if(!v){ document.getElementById("name-inp").focus(); return; }
+  userName=v; setText("gr-name",v);
+  var av=document.getElementById("avatar");
+  if(av) av.src="https://ui-avatars.com/api/?name="+encodeURIComponent(v)+"&background=0d9488&color=fff&size=64";
+  document.getElementById("sc-login").style.display="none";
+  document.getElementById("nav").style.display="flex";
+  miPedido=leerPedido();
+  go("home"); iniciarGPS(); initMQTT(); guardarSesion(); pushHist(); renderPedido();
+  if(qrBike) setTimeout(function(){
+    go("booking");
+    showModal("📷",t("qrScanned",{b:qrBike}),t("qrScannedTxt"),"#0d9488");
+  },400);
+}
+
+
+// ═══════════════ PEDIDO DE TURNO ═══════════════
+var tuFranja=null, tuPlan=null, tuTotal=0, tuSena=0, comprobante=null;
+var miPedido=null;
+var PKEY="pbr-pedido-v11";
+
+function initTurno(){
+  var f=document.getElementById("tu-fecha");
+  var hoy=new Date(), max=new Date(Date.now()+30*86400000);
+  f.min=hoy.toISOString().slice(0,10);
+  f.max=max.toISOString().slice(0,10);
+  if(!f.value) f.value=new Date(Date.now()+86400000).toISOString().slice(0,10);
+  setText("pg-alias",PAGO.alias); setText("pg-cbu",PAGO.cbu); setText("pg-tit",PAGO.titular);
+  var t=document.getElementById("tu-tel");
+  if(t && !t.value && contratoData && contratoData.tel) t.value=contratoData.tel;
+  calcSena();
+}
+function selFranja(f){
+  tuFranja=f;
+  ["m","t","a"].forEach(function(x){
+    var e=document.getElementById("fr-"+x); if(e) e.classList.toggle("sel",x===f); });
+  calcSena();
+}
+function selPlanTurno(p){
+  tuPlan=p;
+  ["hour","half","day"].forEach(function(x){
+    var e=document.getElementById("tp-"+x); if(e) e.classList.toggle("sel",x===p); });
+  calcSena();
+}
+function calcSena(){
+  tuTotal = tuPlan ? TARIFAS[tuPlan] : 0;
+  tuSena  = Math.round(tuTotal/2);
+  setText("tu-total","$"+tuTotal.toLocaleString("es-AR"));
+  setText("tu-sena","$"+tuSena.toLocaleString("es-AR"));
+  setText("tu-resto","$"+(tuTotal-tuSena).toLocaleString("es-AR"));
+  var ok = document.getElementById("tu-fecha").value && tuFranja && tuPlan &&
+           val("tu-tel").length>=6 && comprobante;
+  if(ok) enB("bt-req"); else disB("bt-req");
+}
+function copiarAlias(){
+  try{
+    navigator.clipboard.writeText(PAGO.alias);
+    showModal("📋",t("payCopied"),PAGO.alias,"#0d9488");
+  }catch(e){
+    showModal("📋",t("payAlias"),PAGO.alias,"#0d9488");
+  }
+}
+function cargarComprobante(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(ev){
+    comprimir(ev.target.result,560,null,0.5,function(img){
+      comprobante=img||ev.target.result;
+      document.getElementById("comp-img").src=comprobante;
+      document.getElementById("comp-prev").style.display="block";
+      document.getElementById("comp-drop").style.display="none";
+      calcSena();
+    });
+  };
+  fr.readAsDataURL(f);
+}
+function borrarComprobante(){
+  comprobante=null;
+  document.getElementById("tu-comp").value="";
+  document.getElementById("comp-prev").style.display="none";
+  document.getElementById("comp-drop").style.display="block";
+  calcSena();
+}
+function franjaTexto(f){
+  return {m:t("slotMorning"),t:t("slotAfternoon"),a:t("slotEvening")}[f]||"";
+}
+function enviarPedido(){
+  if(!comprobante){ showModal("⚠️","—",t("needProof"),"#f59e0b"); return; }
+  var id="REQ-"+String(Date.now()).slice(-6);
+  miPedido={
+    reqId:id, nombre:userName, tel:val("tu-tel"), mail:val("tu-mail"),
+    fecha:document.getElementById("tu-fecha").value, franja:tuFranja,
+    franjaTxt:franjaTexto(tuFranja), plan:tuPlan, planTxt:planName(tuPlan),
+    total:tuTotal, sena:tuSena, lang:LANG, comprobante:comprobante,
+    estado:"pendiente", bici:null, ts:Date.now()
+  };
+  enviar("BOOKING_REQUEST", miPedido);
+  guardarPedido();
+  renderPedido();
+  borrarComprobante(); tuFranja=null; tuPlan=null;
+  ["m","t","a"].forEach(function(x){ var e=document.getElementById("fr-"+x); if(e) e.classList.remove("sel"); });
+  ["hour","half","day"].forEach(function(x){ var e=document.getElementById("tp-"+x); if(e) e.classList.remove("sel"); });
+  go("home");
+  showModal("📩",t("reqSent"),t("reqSentTxt"),"#0d9488");
+}
+function guardarPedido(){ try{ localStorage.setItem(PKEY,JSON.stringify(miPedido)); }catch(e){} }
+function leerPedido(){ try{ var r=localStorage.getItem(PKEY); return r?JSON.parse(r):null; }catch(e){ return null; } }
+function cancelarPedido(){
+  if(!miPedido) return;
+  if(!confirm(t("confirmCancel"))) return;
+  enviar("BOOKING_CANCEL",{reqId:miPedido.reqId});
+  miPedido=null;
+  try{ localStorage.removeItem(PKEY); }catch(e){}
+  renderPedido();
+}
+function renderPedido(){
+  var card=document.getElementById("c-pedido");
+  if(!card) return;
+  if(!miPedido){ card.style.display="none"; return; }
+  card.style.display="block";
+  var col={pendiente:["#fef3c7","#b45309","#f59e0b"],
+           confirmado:["#dcfce7","#15803d","#22c55e"],
+           rechazado:["#fee2e2","#b91c1c","#ef4444"]}[miPedido.estado];
+  var lbl={pendiente:t("statusPending"),confirmado:t("statusOk"),rechazado:t("statusNo")}[miPedido.estado];
+  var b=document.getElementById("ped-estado");
+  b.textContent=lbl; b.style.background=col[0]; b.style.color=col[1];
+  card.style.borderLeftColor=col[2];
+  var d=new Date(miPedido.fecha+"T12:00:00");
+  var html = "📅 "+d.toLocaleDateString(LANG==="en"?"en-GB":LANG==="pt"?"pt-BR":"es-AR",
+              {weekday:"long",day:"numeric",month:"long"})+
+             "<br>🕐 "+miPedido.franjaTxt+
+             "<br>🚲 "+miPedido.planTxt+" · $"+miPedido.total.toLocaleString("es-AR")+
+             "<br>💳 "+t("slotDeposit")+": $"+miPedido.sena.toLocaleString("es-AR")+
+             "<br><span style='font-size:10.5px;color:#94a3b8;font-family:monospace'>"+miPedido.reqId+"</span>";
+  if(miPedido.estado==="confirmado" && miPedido.bici)
+    html += "<br><b style='color:#15803d'>"+t("assignedBike")+": #"+miPedido.bici+"</b>";
+  if(miPedido.estado==="rechazado" && miPedido.motivo)
+    html += "<br><span style='color:#b91c1c'>"+miPedido.motivo+"</span>";
+  document.getElementById("ped-detalle").innerHTML=html;
+}
+
+// ═══════════════ RUTAS ═══════════════
+function tarjetaRuta(r){
+  var d=document.createElement("div"); d.className="rc";
+  d.innerHTML="<div style='width:50px;height:50px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:"+r.color+"20;'>"+
+   "<svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='"+r.color+"' stroke-width='2.5'><path d='m8 3 4 8 5-5 5 15H2L8 3z'/></svg></div>"+
+   "<div style='flex:1;min-width:0;'><div style='display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:3px;'>"+
+   "<div style='font-weight:800;color:#1e293b;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px;'>"+r.name[LANG]+"</div>"+
+   "<span style='font-size:9px;font-weight:800;padding:2px 7px;border-radius:5px;background:"+r.color+";color:white;flex-shrink:0;'>"+r.diff[LANG].toUpperCase()+"</span></div>"+
+   "<div style='font-size:11px;color:#94a3b8;margin-bottom:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;'>"+r.desc[LANG].substring(0,55)+"...</div>"+
+   "<div style='display:flex;gap:10px;font-size:11px;font-weight:600;color:#475569;'><span>📍 "+r.dist+"</span><span>⏱ "+r.dur[LANG]+"</span><span>⬆ "+r.elev+"</span></div></div>"+
+   "<svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='#cbd5e1' stroke-width='2'><polyline points='9 18 15 12 9 6'/></svg>";
+  d.addEventListener("click",function(){ abrirRuta(r.id); });
+  return d;
+}
+function renderRutasHome(){
+  var c=document.getElementById("h-routes"); if(!c) return; c.innerHTML="";
+  ROUTES.slice(0,2).forEach(function(r){ c.appendChild(tarjetaRuta(r)); });
+}
+function renderTodasRutas(){
+  var c=document.getElementById("all-rt"); if(!c) return; c.innerHTML="";
+  ROUTES.forEach(function(r){ c.appendChild(tarjetaRuta(r)); });
+}
+function abrirRuta(id){
+  selRoute=ROUTES.filter(function(r){return r.id===id;})[0]; if(!selRoute) return;
+  setText("rd-name",selRoute.name[LANG]); setText("rd-dist",selRoute.dist);
+  setText("rd-time",selRoute.dur[LANG]); setText("rd-elev",selRoute.elev);
+  setText("rd-desc",selRoute.desc[LANG]);
+  var df=document.getElementById("rd-diff");
+  if(df){ df.textContent=selRoute.diff[LANG]; df.style.background=selRoute.color; }
+  go("rdet");
+}
+function abrirMaps(){ if(selRoute) window.open("https://www.google.com/maps/dir/?api=1&destination="+selRoute.mapQ+"&travelmode=bicycling","_blank"); }
+
+// ═══════════════ BOOKING ═══════════════
+function resetBk(){
+  bkType=null;bkH=null;bkPrice=null;bkDur=null;selHrs=null;
+  if(!qrBike) bkBike=null;
+  ["bk-1","bk-2","bk-3","bk-4","bk-ok"].forEach(function(id,i){
+    var e=document.getElementById(id); if(e) e.style.display=i===0?"block":"none"; });
+  setSt(1);
+  ["t-hour","t-half","t-day"].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove("sel"); });
+  ["hc-1","hc-2","hc-3"].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove("sel"); });
+  disB("bt2"); disB("bt3"); disB("bt4");
+}
+function setSt(n){
+  [1,2,3,4].forEach(function(i){
+    var e=document.getElementById("si-"+i); if(!e) return;
+    e.className="step "+(i<n?"si-d":i===n?"si-o":"si-p");
+    e.textContent=i<n?"✓":i; });
+}
+function disB(id){ var b=document.getElementById(id); if(!b) return;
+  b.disabled=true;b.style.background="#e2e8f0";b.style.color="#94a3b8";b.style.boxShadow="none";b.style.cursor="not-allowed"; }
+function enB(id){ var b=document.getElementById(id); if(!b) return;
+  b.disabled=false;b.style.background="#0d9488";b.style.color="white";b.style.boxShadow="0 6px 20px rgba(13,148,136,.3)";b.style.cursor="pointer"; }
+
+function selH(h){
+  selHrs=h;
+  ["hc-1","hc-2","hc-3"].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove("sel"); });
+  var e=document.getElementById("hc-"+h); if(e) e.classList.add("sel");
+  selT("hour");
+}
+function selT(type){
+  ["t-hour","t-half","t-day"].forEach(function(id){ var e=document.getElementById(id); if(e) e.classList.remove("sel"); });
+  var tc=document.getElementById("t-"+type); if(tc) tc.classList.add("sel");
+  bkType=type;
+  var hs = LANG==="en" ? "hour" : "hora";
+  if(type==="hour"){
+    if(!selHrs){ disB("bt2"); return; }
+    bkH=selHrs; bkPrice=selHrs*TARIFAS.hour; bkDur=selHrs+" "+hs+(selHrs>1?"s":"");
+  } else if(type==="half"){ bkH=4; bkPrice=TARIFAS.half; bkDur=t("fourHours"); }
+  else { bkH=8; bkPrice=TARIFAS.day; bkDur=t("eightHours"); }
+  enB("bt2");
+}
+function goBk2(){
+  if(qrBike && bikeStates[qrBike] && bikeStates[qrBike].status==="available"){ bkBike=qrBike; goBk3(); return; }
+  document.getElementById("bk-1").style.display="none";
+  document.getElementById("bk-2").style.display="block";
+  setSt(2);
+  var grid=document.getElementById("bkg"); if(!grid) return;
+  grid.innerHTML="";
+  BIKES.forEach(function(bike){
+    var oc=bikeStates[bike.id].status!=="available";
+    var chip=document.createElement("div");
+    chip.className="bkc"; chip.id="bkc-"+bike.id;
+    if(oc){ chip.style.opacity="0.45"; chip.style.cursor="not-allowed"; chip.style.background="#f8fafc"; }
+    var ic=document.createElement("div");
+    ic.style.cssText="border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;margin:0 auto 7px;background:"+(oc?"#f1f5f9":"#f0fdfa")+";";
+    ic.innerHTML="<svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='"+(oc?"#94a3b8":"#0d9488")+"' stroke-width='2'><circle cx='5.5' cy='17.5' r='3.5'/><circle cx='18.5' cy='17.5' r='3.5'/><path d='M15 6a1 1 0 1 0 0-2 1 1 0 0 0 0 2zm-3 11.5V14l-3-3 4-3 2 3h2'/></svg>";
+    var lb=document.createElement("div");
+    lb.style.cssText="font-size:11px;font-weight:800;color:"+(oc?"#94a3b8":"#1e293b")+";";
+    lb.textContent="#"+bike.id;
+    var st=document.createElement("div");
+    st.className="chip-status";
+    st.style.cssText="font-size:9px;font-weight:700;margin-top:2px;color:"+(oc?"#94a3b8":"#16a34a")+";";
+    st.textContent=oc?t("inUse"):t("free");
+    chip.appendChild(ic); chip.appendChild(lb); chip.appendChild(st);
+    if(!oc){ (function(id){
+      chip.addEventListener("click",function(){ selBike(id); });
+      chip.addEventListener("touchend",function(e){ e.preventDefault(); selBike(id); });
+    })(bike.id); }
+    grid.appendChild(chip);
+  });
+  if(bkBike && bikeStates[bkBike].status==="available") selBike(bkBike);
+}
+function selBike(id){
+  if(bikeStates[id].status!=="available"){ showModal("🔒",t("bikeTaken"),t("bikeBusy",{b:id}),"#f59e0b"); return; }
+  BIKES.forEach(function(b){ var e=document.getElementById("bkc-"+b.id); if(e) e.classList.remove("sel"); });
+  var s=document.getElementById("bkc-"+id); if(s) s.classList.add("sel");
+  bkBike=id; enB("bt3");
+}
+function goBk3(){
+  document.getElementById("bk-1").style.display="none";
+  document.getElementById("bk-2").style.display="none";
+  document.getElementById("bk-3").style.display="block";
+  setSt(3); setTimeout(initSignature,150); chkForm();
+}
+function toggleChk(k){
+  if(k==="c"){ chkContrato=!chkContrato; document.getElementById("chk-c").classList.toggle("on",chkContrato); }
+  else { chkMarketing=!chkMarketing; document.getElementById("chk-m").classList.toggle("on",chkMarketing); }
+  chkForm();
+}
+function chkForm(){
+  var d=val("in-dni"), tel=val("in-tel");
+  if(d.length>=6 && tel.length>=6 && chkContrato && sigDibujada && fotoDoc) enB("bt4");
+  else disB("bt4");
+}
+
+// ═══════════════ DOCUMENTO: FOTO + LECTURA ═══════════════
+function badge(el,cls,txt){
+  var e=document.getElementById(el);
+  e.className="scan-badge "+cls; e.innerHTML=txt; e.style.display="block";
+}
+function cargarFotoDoc(input){
+  var f=input.files&&input.files[0]; if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(ev){
+    var img=new Image();
+    img.onload=function(){
+      var maxW=900, esc=Math.min(1,maxW/img.width);
+      var cv=document.createElement("canvas");
+      cv.width=Math.round(img.width*esc); cv.height=Math.round(img.height*esc);
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      fotoDoc=cv.toDataURL("image/jpeg",0.6);
+      document.getElementById("doc-img").src=fotoDoc;
+      document.getElementById("doc-prev").style.display="block";
+      document.getElementById("doc-drop").style.display="none";
+      chkForm();
+      if(LANG==="es") leerPDF417(cv);
+      else badge("scan-msg","sb-warn",t("scanNoCode"));
+    };
+    img.onerror=function(){ showModal("⚠️","Error","—","#f59e0b"); };
+    img.src=ev.target.result;
+  };
+  fr.readAsDataURL(f);
+}
+function borrarFotoDoc(){
+  fotoDoc=null; docVerificado=false; docLeido=null; docEstado="ambar";
+  document.getElementById("in-docfoto").value="";
+  document.getElementById("doc-prev").style.display="none";
+  document.getElementById("doc-drop").style.display="block";
+  document.getElementById("scan-msg").style.display="none";
+  chkForm();
+}
+
+// Lector del código PDF417 del DNI argentino
+function leerPDF417(canvas){
+  badge("scan-msg","sb-busy",t("scanBusy"));
+  setTimeout(function(){
+    try{
+      var hints=new Map();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[ZXing.BarcodeFormat.PDF_417]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER,true);
+      var reader=new ZXing.MultiFormatReader();
+      reader.setHints(hints);
+      var src=new ZXing.HTMLCanvasElementLuminanceSource(canvas);
+      var bmp=new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src));
+      var res=reader.decode(bmp);
+      procesarDNI(res.getText());
+    }catch(e){
+      docEstado="ambar"; docVerificado=false;
+      badge("scan-msg","sb-warn",t("scanNoCode"));
+    }
+  },80);
+}
+function procesarDNI(txt){
+  // Formato del DNI argentino: campos separados por @
+  var partes=txt.split("@").map(function(x){ return (x||"").trim(); });
+  var nro=null, apellido="", nombre="";
+  // El número de documento suele ser el campo 4; si no, buscamos el primero de 7-8 dígitos
+  if(partes[4]&&/^\d{7,9}$/.test(partes[4])) nro=partes[4].replace(/^0+/,"");
+  if(!nro){
+    for(var i=0;i<partes.length;i++){
+      if(/^\d{7,8}$/.test(partes[i])){ nro=partes[i]; break; }
+    }
+  }
+  if(partes[1]&&/[A-Za-zÁÉÍÓÚÑ]/.test(partes[1])) apellido=partes[1];
+  if(partes[2]&&/[A-Za-zÁÉÍÓÚÑ]/.test(partes[2])) nombre=partes[2];
+  if(!nro){ docEstado="ambar"; docVerificado=false; badge("scan-msg","sb-warn",t("scanNoCode")); return; }
+
+  docLeido={nro:nro,apellido:apellido,nombre:nombre};
+  var tipeado=val("in-dni").replace(/\D/g,"");
+  if(tipeado && tipeado===nro){
+    docVerificado=true; docEstado="verde";
+    badge("scan-msg","sb-ok",t("scanOkMatch")+(apellido?"<br><span style='font-weight:600'>"+nombre+" "+apellido+"</span>":""));
+  } else if(!tipeado){
+    document.getElementById("in-dni").value=nro;
+    docVerificado=true; docEstado="verde";
+    badge("scan-msg","sb-ok",t("scanOkMatch")+(apellido?"<br><span style='font-weight:600'>"+nombre+" "+apellido+"</span>":""));
+    chkForm();
+  } else {
+    docVerificado=false; docEstado="rojo";
+    badge("scan-msg","sb-err",t("scanMismatch",{x:nro}));
+  }
+}
+
+// Validación matemática del pasaporte (dígitos verificadores MRZ)
+function mrzChk(s){
+  var w=[7,3,1], tot=0;
+  for(var i=0;i<s.length;i++){
+    var c=s[i], v;
+    if(c>="0"&&c<="9") v=c.charCodeAt(0)-48;
+    else if(c>="A"&&c<="Z") v=c.charCodeAt(0)-55;
+    else v=0;
+    tot+=v*w[i%3];
+  }
+  return tot%10;
+}
+function validarMRZinput(){
+  var l=val("in-mrz").toUpperCase().replace(/\s/g,"");
+  document.getElementById("in-mrz").value=l;
+  if(l.length<44){
+    mrzOk=false; if(docEstado!=="rojo") docEstado="ambar";
+    badge("mrz-msg","sb-busy",t("mrzShort",{n:l.length}));
+    return;
+  }
+  l=l.substring(0,44);
+  var nro=l.substring(0,9), dNro=l[9];
+  var nac=l.substring(13,19), dNac=l[19];
+  var ven=l.substring(21,27), dVen=l[27];
+  var ok = (String(mrzChk(nro))===dNro) && (String(mrzChk(nac))===dNac) && (String(mrzChk(ven))===dVen);
+  mrzOk=ok;
+  if(ok){
+    docVerificado=true; docEstado="verde";
+    var pais=l.substring(10,13);
+    var f=nac, fv=ven;
+    var fmt=function(x){ return x.substring(4,6)+"/"+x.substring(2,4)+"/"+x.substring(0,2); };
+    badge("mrz-msg","sb-ok",t("mrzOk")+"<br><span style='font-weight:600'>No. "+nro.replace(/</g,"")+" · "+pais+" · DOB "+fmt(f)+" · EXP "+fmt(fv)+"</span>");
+    if(!val("in-dni")){ document.getElementById("in-dni").value=nro.replace(/</g,""); chkForm(); }
+  } else {
+    docVerificado=false; docEstado="rojo";
+    badge("mrz-msg","sb-err",t("mrzBad"));
+  }
+}
+
+// ═══════════════ FIRMA ═══════════════
+function initSignature(){
+  var c=document.getElementById("sig-canvas"); if(!c) return;
+  var rect=c.getBoundingClientRect(), dpr=window.devicePixelRatio||1;
+  c.width=rect.width*dpr; c.height=rect.height*dpr;
+  sigCtx=c.getContext("2d"); sigCtx.scale(dpr,dpr);
+  sigCtx.lineWidth=2.2; sigCtx.lineCap="round"; sigCtx.lineJoin="round"; sigCtx.strokeStyle="#0f172a";
+  var dib=false;
+  function pos(e){ var r=c.getBoundingClientRect(); var p=e.touches?e.touches[0]:e;
+    return {x:p.clientX-r.left,y:p.clientY-r.top}; }
+  function st(e){ e.preventDefault(); dib=true; var p=pos(e); sigCtx.beginPath(); sigCtx.moveTo(p.x,p.y); }
+  function mv(e){ if(!dib) return; e.preventDefault(); var p=pos(e); sigCtx.lineTo(p.x,p.y); sigCtx.stroke(); sigDibujada=true; chkForm(); }
+  function en(){ dib=false; }
+  c.addEventListener("mousedown",st); c.addEventListener("mousemove",mv);
+  c.addEventListener("mouseup",en);   c.addEventListener("mouseleave",en);
+  c.addEventListener("touchstart",st,{passive:false});
+  c.addEventListener("touchmove",mv,{passive:false});
+  c.addEventListener("touchend",en);
+}
+function clearSig(){
+  var c=document.getElementById("sig-canvas"); if(!c||!sigCtx) return;
+  sigCtx.clearRect(0,0,c.width,c.height); sigDibujada=false; chkForm();
+}
+
+function goBk4(){
+  document.getElementById("bk-3").style.display="none";
+  document.getElementById("bk-4").style.display="block";
+  setSt(4);
+  setText("cf-b","Unidad #"+bkBike); setText("cf-n",userName);
+  setText("cf-p",planName(bkType)); setText("cf-d",bkDur);
+  setText("cf-pr","$"+bkPrice.toLocaleString("es-AR"));
+}
+function bookBack(){
+  var pasos=["bk-1","bk-2","bk-3","bk-4","bk-ok"];
+  var act=pasos.filter(function(id){ var e=document.getElementById(id); return e&&e.style.display!=="none"; })[0];
+  if(!act||act==="bk-1"){ go("home"); return; }
+  var i=pasos.indexOf(act);
+  document.getElementById(act).style.display="none";
+  document.getElementById(pasos[i-1]).style.display="block";
+  setSt(i);
+}
+function confirmBk(){
+  if(!bkBike) return;
+  if(bikeStates[bkBike].status!=="available"){
+    bkBike=null; showModal("⚠️",t("bikeTaken"),t("bikeBusy",{b:bkBike}),"#ef4444"); return; }
+  bkCnt++;
+  var code="PBR-"+bkBike+"-"+String(Date.now()).slice(-5);
+  contratoData={
+    code:code, lang:LANG, nombre:userName, dni:val("in-dni"), tel:val("in-tel"), mail:val("in-mail"),
+    bici:bkBike, plan:planName(bkType), duracion:bkDur, precio:bkPrice,
+    marketing:chkMarketing, firma:document.getElementById("sig-canvas").toDataURL("image/png"),
+    docfoto:fotoDoc, docVerificado:docVerificado, docEstado:docEstado,
+    docTipo: LANG==="es" ? "DNI" : (LANG==="pt" ? "Passaporte" : "Passport"),
+    fecha:new Date().toLocaleString(LANG==="en"?"en-GB":LANG==="pt"?"pt-BR":"es-AR"),
+    gps: gpsPos ? gpsPos.lat.toFixed(5)+", "+gpsPos.lng.toFixed(5) : "n/d",
+    dispositivo: navigator.userAgent.substring(0,80)
+  };
+  enviarContratoACentral(); guardarSesion();
+  document.getElementById("bk-4").style.display="none";
+  document.getElementById("bk-ok").style.display="block";
+  setText("ok-code",code); setText("ok-b","Unidad #"+bkBike);
+  setText("ok-d",bkDur); setText("ok-p","$"+bkPrice.toLocaleString("es-AR"));
+}
+
+function comprimir(dataUrl,w,h,q,cb){
+  try{
+    var img=new Image();
+    img.onload=function(){
+      var cv=document.createElement("canvas");
+      var esc=Math.min(1,w/img.width);
+      cv.width=Math.round(img.width*esc); cv.height=h||Math.round(img.height*esc);
+      var x=cv.getContext("2d");
+      x.fillStyle="#fff"; x.fillRect(0,0,cv.width,cv.height);
+      x.drawImage(img,0,0,cv.width,cv.height);
+      cb(cv.toDataURL("image/jpeg",q));
+    };
+    img.onerror=function(){ cb(null); };
+    img.src=dataUrl;
+  }catch(e){ cb(null); }
+}
+function enviarContratoACentral(){
+  if(!contratoData) return;
+  var d=contratoData;
+  comprimir(d.firma,360,130,0.55,function(fc){
+    comprimir(d.docfoto,520,null,0.45,function(dc){
+      enviar("CONTRACT",{
+        id:d.bici, code:d.code, nombre:d.nombre, dni:d.dni, tel:d.tel, mail:d.mail,
+        plan:d.plan, duracion:d.duracion, precio:d.precio, marketing:d.marketing,
+        fecha:d.fecha, gps:d.gps, dispositivo:d.dispositivo, lang:d.lang,
+        docTipo:d.docTipo, docVerificado:d.docVerificado, docEstado:d.docEstado||"ambar",
+        firma:fc||"", dnifoto:dc||""
+      });
+    });
+  });
+}
+
+// ═══════════════ PDF ═══════════════
+function descargarPDF(){
+  if(!contratoData){ showModal("⚠️",t("noContract"),t("noContractTxt"),"#f59e0b"); return; }
+  try{
+    var d=contratoData, L=d.lang||"es";
+    var doc=new window.jspdf.jsPDF({unit:"mm",format:"a4"});
+    var y=18;
+    var TT = L==="en" ? {
+      title:"Bicycle Rental Agreement", renter:"RENTER DETAILS", name:"Full name",
+      doc:"Passport", phone:"Phone", mail:"Email", det:"RENTAL DETAILS",
+      unit:"Unit: 29er mountain bike — Unit #", plan:"Plan", amount:"Total amount",
+      gear:"Included equipment: certified safety helmet",
+      pick:"Pick-up and return: Potrerillos Reservoir Base — RN7",
+      cl:"CLAUSES", promo:"Consent for promotional communications", yes:"ACCEPTS", no:"DOES NOT ACCEPT",
+      sig:"RENTER'S SIGNATURE", trace:"Electronic signature under Act 25.506. Traceability data:",
+      when:"Date and time", where:"GPS location at signing", dev:"Device",
+      annex:"ANNEX — Renter's identity document", verified:"Document automatically verified",
+      notver:"Document not automatically verified",
+      keep:"Image provided by the holder and retained under Act 25.326, solely to evidence this agreement."
+    } : {
+      title:"Contrato de Alquiler de Bicicleta", renter:"DATOS DEL LOCATARIO", name:"Nombre y apellido",
+      doc:"DNI", phone:"Teléfono", mail:"Email", det:"DETALLE DEL ALQUILER",
+      unit:"Unidad: Bicicleta MTB Rodado 29 — Unidad #", plan:"Plan contratado", amount:"Importe total",
+      gear:"Equipamiento incluido: casco de seguridad certificado",
+      pick:"Punto de retiro y devolución: Base Embalse Potrerillos — RN7",
+      cl:"CLÁUSULAS", promo:"Consentimiento para comunicaciones promocionales", yes:"ACEPTA", no:"NO ACEPTA",
+      sig:"FIRMA DEL LOCATARIO", trace:"Firma electrónica conforme Ley 25.506. Datos de trazabilidad:",
+      when:"Fecha y hora", where:"Ubicación GPS al firmar", dev:"Dispositivo",
+      annex:"ANEXO — Documento de identidad del locatario", verified:"Documento verificado automáticamente",
+      notver:"Documento sin verificación automática",
+      keep:"Imagen aportada por el titular y conservada conforme Ley 25.326, al solo efecto de acreditar la contratación."
+    };
+
+    doc.setFontSize(16); doc.setFont(undefined,"bold");
+    doc.text("POTRERILLOS BIKE RENTAL",105,y,{align:"center"}); y+=6;
+    doc.setFontSize(10); doc.setFont(undefined,"normal");
+    doc.text(TT.title+" — "+d.code,105,y,{align:"center"}); y+=4;
+    doc.setFontSize(8); doc.setTextColor(120);
+    doc.text("Embalse Potrerillos · Luján de Cuyo · Mendoza · Argentina",105,y,{align:"center"});
+    doc.setTextColor(0); y+=8;
+    doc.setDrawColor(13,148,136); doc.setLineWidth(0.7); doc.line(18,y,192,y); y+=8;
+
+    doc.setFontSize(10); doc.setFont(undefined,"bold"); doc.text(TT.renter,18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(9);
+    doc.text(TT.name+": "+d.nombre,18,y); y+=5;
+    doc.text(TT.doc+": "+d.dni+(d.docVerificado?"  ✓":""),18,y); y+=5;
+    doc.text(TT.phone+": "+d.tel,18,y); y+=5;
+    if(d.mail){ doc.text(TT.mail+": "+d.mail,18,y); y+=5; }
+    y+=3;
+    doc.setFont(undefined,"bold"); doc.setFontSize(10); doc.text(TT.det,18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(9);
+    doc.text(TT.unit+d.bici,18,y); y+=5;
+    doc.text(TT.plan+": "+d.plan+" ("+d.duracion+")",18,y); y+=5;
+    doc.text(TT.amount+": $"+d.precio.toLocaleString("es-AR"),18,y); y+=5;
+    doc.text(TT.gear,18,y); y+=5;
+    doc.text(TT.pick,18,y); y+=8;
+
+    doc.setFont(undefined,"bold"); doc.setFontSize(10); doc.text(TT.cl,18,y); y+=6;
+    doc.setFont(undefined,"normal"); doc.setFontSize(7.5);
+    CONTRATO[L].forEach(function(c){
+      doc.setFont(undefined,"bold"); doc.text(c[0],18,y); y+=3.6;
+      doc.setFont(undefined,"normal");
+      doc.splitTextToSize(c[1],172).forEach(function(l){ doc.text(l,18,y); y+=3.4; });
+      y+=1.2;
+    });
+    y+=3;
+    doc.setFontSize(8);
+    doc.text(TT.promo+": "+(d.marketing?TT.yes:TT.no),18,y); y+=8;
+
+    if(y>235){ doc.addPage(); y=20; }
+    doc.setFont(undefined,"bold"); doc.setFontSize(9); doc.text(TT.sig,18,y); y+=3;
+    try{ doc.addImage(d.firma,"PNG",18,y,70,26); }catch(e){}
+    y+=28;
+    doc.setLineWidth(0.3); doc.setDrawColor(120); doc.line(18,y,88,y); y+=4;
+    doc.setFont(undefined,"normal"); doc.setFontSize(7.5); doc.setTextColor(90);
+    doc.text(d.nombre+" — "+TT.doc+" "+d.dni,18,y); y+=6;
+    doc.setFontSize(6.8);
+    doc.text(TT.trace,18,y); y+=3.2;
+    doc.text(TT.when+": "+d.fecha,18,y); y+=3.2;
+    doc.text(TT.where+": "+d.gps,18,y); y+=3.2;
+    doc.text(TT.dev+": "+d.dispositivo,18,y);
+    doc.setTextColor(0);
+
+    if(d.docfoto){
+      doc.addPage();
+      doc.setFontSize(12); doc.setFont(undefined,"bold");
+      doc.text(TT.annex,105,20,{align:"center"});
+      doc.setFontSize(9); doc.setFont(undefined,"normal");
+      doc.text(d.nombre+" — "+TT.doc+" "+d.dni,105,27,{align:"center"});
+      doc.text(d.code+" — "+d.fecha,105,32,{align:"center"});
+      doc.setFontSize(8);
+      doc.setTextColor(d.docVerificado?13:150, d.docVerificado?148:120, d.docVerificado?136:120);
+      doc.text(d.docVerificado?("✓ "+TT.verified):TT.notver,105,37,{align:"center"});
+      doc.setTextColor(0);
+      try{ doc.addImage(d.docfoto,"JPEG",30,42,150,95); }catch(e){}
+      doc.setFontSize(7); doc.setTextColor(110);
+      doc.splitTextToSize(TT.keep,150).forEach(function(l,i){ doc.text(l,105,144+i*3.4,{align:"center"}); });
+      doc.setTextColor(0);
+    }
+    doc.save("Contrato_"+d.code+"_"+d.nombre.replace(/\s+/g,"_")+".pdf");
+  }catch(e){ showModal("⚠️",t("pdfErr"),t("pdfErrTxt"),"#f59e0b"); }
+}
+
+// ═══════════════ ALQUILER ═══════════════
+function startRental(){
+  myBikeId=bkBike; remainSec=bkH*3600;
+  var lat=gpsPos?gpsPos.lat:BASE.lat+(Math.random()-.5)*.002;
+  var lng=gpsPos?gpsPos.lng:BASE.lng+(Math.random()-.5)*.002;
+  enviar("RENTAL_START",{id:myBikeId,renter:userName,hours:bkH,price:bkPrice,
+    code:contratoData?contratoData.code:"",type:bkType,lat:lat,lng:lng,
+    dni:contratoData?contratoData.dni:"",tel:contratoData?contratoData.tel:"",
+    mail:contratoData?contratoData.mail:"",marketing:contratoData?contratoData.marketing:false,
+    docEstado:contratoData?contratoData.docEstado:"ambar",
+    docTipo:contratoData?contratoData.docTipo:"DNI"});
+  bikeStates[myBikeId]={status:"active",renter:userName};
+  actualizarContadorLibres();
+  document.getElementById("c-avail").style.display="none";
+  document.getElementById("c-active").style.display="block";
+  setText("h-bike","Rodado 29 — #"+myBikeId);
+  setText("a-type",planName(bkType)+" · "+bkDur);
+  pedirWakeLock();
+  if(timerIv) clearInterval(timerIv);
+  timerIv=setInterval(tickTimer,1000); tickTimer();
+  guardarSesion(); go("home");
+  showModal("🚴",t("pedal"),t("pedalTxt",{d:bkDur}),"#0d9488");
+}
+function tickTimer(){
+  if(remainSec<=0){ terminarAlquilerLocal(true);
+    showModal("⏰",t("timeUp"),t("timeUpTxt"),"#0d9488"); return; }
+  var h=Math.floor(remainSec/3600),m=Math.floor((remainSec%3600)/60),s=remainSec%60;
+  var x=pad(h)+":"+pad(m)+":"+pad(s);
+  setText("h-timer",x); setText("a-timer",x);
+  remainSec--;
+}
+function devolverBici(){
+  if(!myBikeId) return;
+  if(!confirm(t("confirmReturn",{b:myBikeId}))) return;
+  terminarAlquilerLocal(true);
+  showModal("✅",t("returned"),t("returnedTxt"),"#0d9488");
+}
+function terminarAlquilerLocal(avisar){
+  if(timerIv){ clearInterval(timerIv); timerIv=null; }
+  if(avisar&&myBikeId) enviar("END",{id:myBikeId});
+  if(myBikeId) bikeStates[myBikeId]={status:"available",renter:null};
+  myBikeId=null; remainSec=0; soltarWakeLock();
+  document.getElementById("c-avail").style.display="block";
+  document.getElementById("c-active").style.display="none";
+  setText("h-timer","--:--:--"); setText("a-timer","--:--:--");
+  actualizarContadorLibres(); borrarAlquilerGuardado(); go("home");
+}
+function triggerSOS(){
+  var lat=gpsPos?gpsPos.lat:BASE.lat+(Math.random()-.5)*.002;
+  var lng=gpsPos?gpsPos.lng:BASE.lng+(Math.random()-.5)*.002;
+  enviar("SOS",{id:myBikeId||"??",renter:userName||"—",lat:lat,lng:lng,tel:contratoData?contratoData.tel:""});
+  showModal("🆘",t("sosSent"),t("sosTxt",{c:lat.toFixed(4)+", "+lng.toFixed(4)}),"#ef4444");
+}
+
+// ═══════════════ UTILS ═══════════════
+function showModal(i,ti,x,c){
+  setText("m-ico",i); setText("m-tit",ti); setText("m-txt",x);
+  var b=document.getElementById("m-btn"); if(b) b.style.background=c;
+  document.getElementById("modal").style.display="flex";
+}
+function closeModal(){ document.getElementById("modal").style.display="none"; }
+function setText(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; }
+function pad(n){ return String(n).padStart(2,"0"); }
+(function clk(){ var n=new Date(); setText("sb-t",pad(n.getHours())+":"+pad(n.getMinutes())); setTimeout(clk,15000); })();
+setInterval(function(){ if(userName) guardarSesion(); },20000);
+window.addEventListener("beforeunload",function(){ if(userName) guardarSesion(); });
+
+// ═══════════════ INIT ═══════════════
+window.addEventListener("load",function(){
+  try{ var l=localStorage.getItem("pbr-lang"); if(l) LANG=l; }catch(e){}
+  aplicarIdioma();
+  var p=new URLSearchParams(window.location.search);
+  var b=p.get("bici"); if(b&&bikeStates[b]) qrBike=b;
+  var lg=p.get("lang"); if(lg==="en"||lg==="es") setLang(lg);
+  restaurarSesion();
+});
+</script>
+</body></html>
